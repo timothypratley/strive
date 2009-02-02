@@ -9,7 +9,6 @@
   isFemale(?x) :- woman(?x).
   isMale(?y) :- hasSon(?x,?y).
   ?-isMale(?x).")
-(def kbf (org.deri.iris.KnowledgeBaseFactory.))
 (def kb (org.deri.iris.KnowledgeBaseFactory/createKnowledgeBase 
           (.getFacts parser) (.getRules parser)))
 (doseq [q (.getQueries parser)]
@@ -40,13 +39,14 @@
                           (tuple (string-term term))))))
       query (fn [lit]
               (.createQuery bf lit))])
+
 ; ok, actually using these primitives requires some deeper understanding
 ;
-  ;man (predicate "man" 1)
-  ;fact (simple-rule "man" "tim")
-      ;facts { relation}
+; man (predicate "man" 1)
+; fact (simple-rule "man" "tim")
+; facts {pred relation, pred relation}
               
-;      kbf (org.deri.iris.KnowlegdeBaseFactory.)
-;      kb (kbf/createKnowledgeBase facts rules)
-;      (.execute kb query)
+; kb (org.deri.iris.KnowledgeBaseFactory/createKnowledgeBase 
+;      facts rules)
+; (.execute kb query)
 

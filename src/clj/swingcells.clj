@@ -4,10 +4,16 @@
 (ns timothypratley.swingcells
   (:import
      (clojure.lang Agent Atom Ref)
-     (java.awt Component Window)
+     (java.awt Component Window GridBagLayout GridBagConstraints
+               GraphicsEnvironment)
+     (java.awt.event ActionListener)
      (javax.swing JTextField JLabel JPanel JPasswordField JButton JFrame
-                  SwingUtilities UIManager)
-     (java.util.concurrent LinkedBlockingQueue)))
+                  SwingUtilities UIManager ImageIcon)
+     (javax.swing.event DocumentListener)
+     (javax.sound.midi MidiSystem)
+     (javax.sound.sampled AudioSystem DataLine$Info Clip AudioInputStream)
+     (java.util.concurrent LinkedBlockingQueue)
+     (java.io File)))
 
 
 ; General helpers
@@ -36,17 +42,27 @@
   [& body]
   `(SwingUtilities/invokeLater (fn [] ~@body)))
 
-(defmacro add-listener
+(defmacro add-action-listener
   "Attaches an ActionListener to a Component"
   [#^Component obj, evt & body]
   `(.addActionListener
-     ~obj (proxy [java.awt.event.ActionListener] []
+     ~obj (proxy [ActionListener] []
             (actionPerformed [~evt] ~@body))))
+
+(defmacro add-text-listener
+  "Attaches a TextListener to a Component"
+  [#^Component obj, evt & body]
+  `(.addDocumentListener
+     (.getDocument ~obj)
+     (proxy [DocumentListener] []
+       (changedUpdate [~evt] ~@body)
+       (insertUpdate [~evt] ~@body)
+       (removeUpdate [~evt] ~@body))))
 
 (defmacro button
   "Create a JButton with an ActionListener"
   [#^String text, evt & body]
-  `(doto (JButton. ~text) (add-listener ~evt ~@body)))
+  `(doto (JButton. ~text) (add-action-listener ~evt ~@body)))
 
 (defmacro frame
   "Construct a frame"
@@ -57,7 +73,7 @@
          (UIManager/getSystemLookAndFeelClassName))
        (doto f#
          (.setDefaultCloseOperation (JFrame/EXIT_ON_CLOSE))
-         (.setLayout (java.awt.GridBagLayout.))
+         (.setLayout (GridBagLayout.))
          ~@body
          (.pack)
          (.show)))
@@ -66,7 +82,7 @@
 (defn add
   "Adds a component to another component"
   [#^JFrame parent, #^Component child & constraints]
-  (let [gbc (java.awt.GridBagConstraints.)]
+  (let [gbc (GridBagConstraints.)]
     (doseq [c (partition 2 constraints)]
       (clojure.lang.Reflector/setInstanceField gbc (name (first c)) (second c)))
     (.add (.getContentPane parent) child gbc)))
@@ -76,7 +92,7 @@
   [#^Window window]
   (later
     (->
-      (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)
+      (GraphicsEnvironment/getLocalGraphicsEnvironment)
       .getDefaultScreenDevice
       (.setFullScreenWindow window))))
 
@@ -103,6 +119,19 @@
     (recur window (f window (second next)))
     (.dispose window)))
 
+(defn set-background
+  "Sets an image as the background of a JFrame"
+  [#^Window window, #^String filename]
+  (let [image (.getImage (ImageIcon. filename))]
+    (doto window
+      (.setContentPane
+        (doto (proxy [JPanel] []
+                (paintComponent [g]
+                  (.drawImage g image 0 0
+                              (.getWidth this) (.getHeight this) nil)
+                  (proxy-super paintComponent g)))
+          (.setOpaque false)))
+       (.setLayout (GridBagLayout.)))))
 
 ; MVC helpers
 
@@ -113,12 +142,13 @@
     (setter view @reference)
     (add-watch reference view
                (fn [me r old new]
-                 (if-not (identical? old new)
+                 (if (not= old new)
                    (later (setter me @r))))))
   (if getter
-    (add-listener view evt (let [v (getter view)]
-                             (if (not= v @reference)
-                               (reference-reset! reference v))))))
+    (add-text-listener view evt
+                       (let [v (getter view)]
+                         (if (not= v @reference)
+                           (reference-reset! reference v))))))
 
 (defn link-in
   "Hooks a GUI item to a data item in a map found by ks a seq of keys"
@@ -127,12 +157,13 @@
     (setter view (get-in @reference ks))
     (add-watch reference view
                (fn [me r old new]
-                 (if-not (identical? (get-in old ks) (get-in new ks))
+                 (if (not= (get-in old ks) (get-in new ks))
                    (later (setter me (get-in @r ks)))))))
   (if getter
-    (add-listener view evt (let [v (getter view)]
-                             (if (not= v (get-in @reference ks))
-                               (reference-swap! reference assoc-in ks v))))))
+    (add-text-listener view evt
+                       (let [v (getter view)]
+                         (if (not= v (get-in @reference ks))
+                           (reference-swap! reference assoc-in ks v))))))
 
 (defn unlink
   "Unlinks a GUI item from a data item"
@@ -143,12 +174,16 @@
   "Returns a JLabel which watches a reference"
   ([reference]
    (doto (JLabel.)
-     (link (fn [#^JLabel x, #^String y] (.setText x y))
+     (link (fn [#^JLabel x, #^String y]
+             (if (not= y (.getText x))
+               (.setText x y)))
            nil
            reference)))
   ([reference format-str]
    (doto (JLabel.)
-     (link (fn [#^JLabel x, y] (.setText x (format format-str y)))
+     (link (fn [#^JLabel x, y]
+             (if (not= (format format-str y) (.getText x))
+               (.setText x (format format-str y))))
            nil
            reference))))
 
@@ -156,19 +191,20 @@
   "Returns a JTextField which watches and updates a reference"
   ([reference]
    (doto (JTextField. 20)
-     (link (fn [#^JTextField x, #^String y] (.setText x y))
+     (link (fn [#^JTextField x, #^String y]
+             (if (not= y (.getText x))
+               (.setText x y)))
            (fn [#^JTextField x] (.getText x))
            reference)))
   ([reference, #^String label]
    (doto (JPanel.)
      (.add (JLabel. label))
-     (.add (doto (JTextField. 20)
-             (link (fn [#^JTextField x, #^String y] (.setText x y))
-                   (fn [#^JTextField x] (.getText x))
-                   reference)))))
+     (.add (text-field reference))))
   ([reference to-string from-string]
    (doto (JTextField. 20)
-     (link (fn [#^JTextField x, y] (.setText x (to-string y)))
+     (link (fn [#^JTextField x, y]
+             (if (not= (to-string y) (.getText x))
+               (.setText x (to-string y))))
            (fn [#^JTextField x] (from-string (.getText x)))
            reference))))
 
@@ -176,16 +212,15 @@
   "Returns a JPasswordField which watches and updates a reference"
   ([reference]
    (doto (JPasswordField. 20)
-     (link (fn [#^JPasswordField x, #^String y] (.setText x y))
+     (link (fn [#^JPasswordField x, #^String y]
+             (if (not= y (.getText x))
+               (.setText x y)))
            (fn [#^JPasswordField x] (.getText x))
            reference)))
   ([reference, #^String label]
    (doto (JPanel.)
      (.add (JLabel. label))
-     (.add (doto (JPasswordField. 20)
-             (link (fn [#^JPasswordField x, #^String y] (.setText x y))
-                   (fn [#^JPasswordField x] (.getText x))
-                   reference))))))
+     (.add (password-field reference)))))
 
 ; in progress
 (comment
@@ -198,6 +233,31 @@
     (getValueAt [r c]  (value-at r c)) 
     (isCellEditable [r c] false))) 
 )
+
+
+; Audo helpers
+
+(defn play-clip
+  [#^String filename]
+  (doto (AudioSystem/getLine (DataLine$Info. (.class Clip) format))
+    (.open (AudioInputStream. (File. filename)))
+    (.start)))
+
+(let [midi-sequencer (MidiSystem/getSequencer)]
+  (defn play-midi
+    "Play a midi file"
+    [#^String filename]
+    (doto midi-sequencer
+      (.open)
+      (.stop)
+      (.setSequence (MidiSystem/getSequence (File. filename)))
+      (.start)))
+  (defn stop-midi
+    "Stop midi playing"
+    []
+    (doto midi-sequencer
+      (.stop)
+      (.close))))
 
 
 ; Examples
@@ -241,19 +301,50 @@
 (def login-screen)
 (defn play-screen
   [#^Window window, character]
+  (stop-midi)
+  (set-background window "play.png")
+  (play-midi "HUMAN1.MID")
   (screen window blocker
-          [[(button "Bye" evt (.put blocker true))]]
+          [[(button "Bye" evt
+                    (stop-midi)
+                    (set-background window "splash.jpg")
+                    (play-midi "TITLE.MID")
+                    (.put blocker true))]]
           [true login-screen]))
 
-(defn character-select-screen
-  [#^Window window, user]
-  (screen window blocker
-          (map #(vector (button (str (:name %1) " - " (name (:class %1)))
-                                evt (.put blocker (:name %1))))
-              (user :characters))
-          [false login-screen play-screen]))
+(defn character-create-screen
+  [#^Window window, _]
+  (let [character-name (atom "")]
+    (screen window blocker
+            [[(text-field character-name "Enter your chacter's name:")]
+             [(button "Confirm" evt (if (pos? (count @character-name))
+                                      (.put blocker @character-name)))
+              :gridx 1]
+             [(button "Cancel" evt (.put blocker false))
+              :gridx 2]]
+            [false login-screen play-screen])))
 
-(defn login-screen[#^Window window, _]
+(let [icons {:warrior (ImageIcon. "warrior.jpg")
+             :hunter (ImageIcon. "hunter.jpg")
+             :warlock (ImageIcon. "warlock.jpg")}]
+  (defn character-select-screen
+    [#^Window window, user]
+    (screen window blocker
+            (conj 
+              (vec (map #(list
+; oh my I'm out of whitespace
+(doto (button (str (:name %1) " - " (name (:class %1)))
+              evt (.put blocker (:name %1)))
+  (.setIcon (icons (:class %1))))
+                           :gridx 1)
+                        (user :characters)))
+              [(button "Create New" evt (.put blocker :create-new))
+               :gridx 1])
+            [:create-new character-create-screen
+             false login-screen play-screen])))
+
+(defn login-screen
+  [#^Window window, _]
   (let [username (atom "")
         password (atom "")]
     (screen window blocker
@@ -264,10 +355,19 @@
              [(JLabel. "Hint: Conan/Barbarian")
               :gridx 2, :gridy 2]
              [(button "Login" evt (.put blocker (login @username @password)))
-              :gridx 2, :gridy 4]
+              :gridx 1, :gridy 4]
              [(button "Quit" evt (.put blocker :quit))
               :gridx 2, :gridy 5]]
             [:quit nil false login-screen character-select-screen])))
+
+(defn splash-screen
+  [#^Window window, _]
+  (set-background window "splash.jpg")
+  (play-midi "TITLE.MID")
+  (screen window blocker
+          [[(button "FunMud" evt (.put blocker true))]]
+          [login-screen]))
+
 
 (defn game-demo []
   (navigate
@@ -275,7 +375,8 @@
       (frame "FunMud")
       (full-screen)
       (.setUndecorated true))
-    [login-screen nil]))
+    [splash-screen nil])
+  (stop-midi))
 
 (game-demo)
 

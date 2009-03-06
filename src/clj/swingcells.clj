@@ -38,6 +38,15 @@
     (instance? Atom reference) (apply swap! reference func args)
     (instance? Ref reference) (dosync (apply commute reference func args))))
 
+(defn inside
+  "Restricts the result of a function"
+  [value lower upper func & args]
+  (let [result (apply func value args)]
+    (cond
+      (> lower result) lower
+      (< upper result) upper
+      :else result)))
+
 
 ; Swing helpers
 
@@ -136,6 +145,19 @@
                   (proxy-super paintComponent g)))
           (.setOpaque false)))
        (.setLayout (GridBagLayout.)))))
+
+(defn input-map
+  "Map a key to a function"
+  [#^java.awt.Window window name key-event func & args]
+  (-> window .getRootPane .getActionMap
+    (.put name (proxy [javax.swing.AbstractAction] []
+                 (actionPerformed [#^java.awt.event.ActionEvent a] 
+                                  (println "ACTION!")
+                                  (apply func args)))))
+  (-> window .getRootPane
+    (.getInputMap javax.swing.JComponent/WHEN_IN_FOCUSED_WINDOW)
+    (.put (javax.swing.KeyStroke/getKeyStroke key-event 0) name)))
+
 
 ; MVC helpers
 
@@ -239,7 +261,7 @@
 )
 
 
-; Audo helpers
+; Audio helpers
 
 (defn play-clip
   [#^String filename]

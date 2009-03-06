@@ -22,19 +22,54 @@
                   {:name "Alsvid" :class :hunter}]}
     false))
 
+(def icons {:warrior (javax.swing.ImageIcon. "warrior.jpg")
+            :hunter (javax.swing.ImageIcon. "hunter.jpg")
+            :warlock (javax.swing.ImageIcon. "warlock.jpg")})
 (def login-screen)
+(def +char-size+ 64)
 (defn play-screen
   [#^java.awt.Window window, character]
   (stop-midi)
-  (set-background window "play.png")
+  (let [width (.getWidth window)
+        height (.getHeight window)
+        x (atom (/ (- width +char-size+) 2))
+        y (atom (/ (- height +char-size+) 2))
+        move (fn [dx dy]
+               (swap! x inside 0 (- (dec width) +char-size+)
+                      + (* dx +char-size+))
+               (swap! y inside 0 (- (dec height) +char-size+)
+                      + (* dy +char-size+))
+               (.repaint window))
+        back-image (.getImage (javax.swing.ImageIcon. "play.png"))
+        char-image (.getImage (icons :warrior))]
+    (doto window
+      (.setContentPane
+        (doto (proxy [javax.swing.JPanel] []
+                (paintComponent [#^java.awt.Graphics g]
+                  (.drawImage g back-image 0 0
+                              (.getWidth this) (.getHeight this) nil)
+                  (.drawImage g char-image @x @y +char-size+ +char-size+ nil)
+                  (proxy-super paintComponent g)))
+          (.setOpaque false)))
+      (.setLayout (java.awt.GridBagLayout.)))
   (play-midi "HUMAN1.MID")
   (screen window blocker
-          [[(button "Bye" evt
+          [[(button "N" evt (move 0 -1))
+            :gridx 2 :gridy 1]
+           [(button "S" evt (move 0 1))
+            :gridx 2 :gridy 3]
+           [(button "E" evt (move 1 0))
+            :gridx 3 :gridy 2]
+           [(button "W" evt (move -1 0))
+            :gridx 1 :gridy 2]
+           [(button "Logout" evt
                     (stop-midi)
                     (set-background window "splash.jpg")
                     (play-midi "TITLE.MID")
-                    (.put blocker true))]]
-          [true login-screen]))
+                    (.put blocker true))
+            :anchor java.awt.GridBagConstraints/SOUTHEAST
+            :gridx 4 :gridy 4 :weightx 1 :weighty 1]]
+          [true login-screen])))
 
 (defn character-create-screen
   [#^java.awt.Window window, _]
@@ -48,24 +83,21 @@
               :gridx 2]]
             [false login-screen play-screen])))
 
-(let [icons {:warrior (javax.swing.ImageIcon. "warrior.jpg")
-             :hunter (javax.swing.ImageIcon. "hunter.jpg")
-             :warlock (javax.swing.ImageIcon. "warlock.jpg")}]
-  (defn character-select-screen
-    [#^java.awt.Window window, user]
-    (screen window blocker
-            (conj 
-              (vec (map #(list
+(defn character-select-screen
+  [#^java.awt.Window window, user]
+  (screen window blocker
+          (conj 
+            (vec (map #(list
 ; oh my I'm out of whitespace
 (doto (button (str (:name %1) " - " (name (:class %1)))
-              evt (.put blocker (:name %1)))
-  (.setIcon (icons (:class %1))))
-                           :gridx 1)
-                        (user :characters)))
-              [(button "Create New" evt (.put blocker :create-new))
-               :gridx 1])
-            [:create-new character-create-screen
-             false login-screen play-screen])))
+            evt (.put blocker (:name %1)))
+(.setIcon (icons (:class %1))))
+                         :gridx 1)
+                      (user :characters)))
+            [(button "Create New" evt (.put blocker :create-new))
+             :gridx 1])
+          [:create-new character-create-screen
+           false login-screen play-screen]))
 
 (defn login-screen
   [#^java.awt.Window window, _]

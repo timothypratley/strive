@@ -11,7 +11,7 @@
   (:import
      (clojure.lang Agent Atom Ref)
      (java.awt Component GridBagLayout GridBagConstraints
-               GraphicsEnvironment)
+               GraphicsEnvironment Graphics)
      (java.awt.event ActionListener)
      (javax.swing JTextField JLabel JPanel JPasswordField JFrame
                   ImageIcon)
@@ -62,15 +62,20 @@
      ~obj (proxy [java.awt.event.ActionListener] []
             (actionPerformed [~evt] ~@body))))
 
+(defmacro doc-listener
+  "Creates a DocumentListener"
+  [evt & body]
+  `(proxy [javax.swing.event.DocumentListener] []
+     (changedUpdate [~evt] ~@body)
+     (insertUpdate [~evt] ~@body)
+     (removeUpdate [~evt] ~@body)))
+
 (defmacro add-text-listener
   "Attaches a TextListener to a Component"
   [#^java.awt.Component obj, evt & body]
   `(.addDocumentListener
      (.getDocument ~obj)
-     (proxy [javax.swing.event.DocumentListener] []
-       (changedUpdate [~evt] ~@body)
-       (insertUpdate [~evt] ~@body)
-       (removeUpdate [~evt] ~@body))))
+     (doc-listener ~evt ~@body)))
 
 (defmacro button
   "Create a JButton with an ActionListener"
@@ -139,9 +144,10 @@
     (doto window
       (.setContentPane
         (doto (proxy [JPanel] []
-                (paintComponent [g]
+                (paintComponent [#^Graphics g]
                   (.drawImage g image 0 0
-                              (.getWidth this) (.getHeight this) nil)
+                              (.getWidth #^JPanel this)
+                              (.getHeight #^JPanel this) nil)
                   (proxy-super paintComponent g)))
           (.setOpaque false)))
        (.setLayout (GridBagLayout.)))))
@@ -164,17 +170,25 @@
 (defn link
   "Hooks a GUI item to a data item"
   [#^Component view, setter getter reference]
-  (when setter
-    (setter view @reference)
-    (add-watch reference view
-               (fn [me r old new]
-                 (if (not= old new)
-                   (later (setter me @r))))))
-  (if getter
-    (add-text-listener view evt
-                       (let [v (getter view)]
-                         (if (not= v @reference)
-                           (reference-reset! reference v))))))
+  (let [dl (doc-listener evt
+                         (try
+                           (let [v (getter view)]
+                             (if (not= v @reference)
+                               (reference-reset! reference v)))
+                           (catch RuntimeException e)))]
+    (when setter
+      (setter view @reference)
+      (add-watch reference view
+                 (fn [me r old new]
+                   (if (not= old new)
+                     (later 
+                       (if getter
+                         (.removeDocumentListener (.getDocument view) dl))
+                       (setter me @r)
+                       (if getter
+                         (.addDocumentListener (.getDocument view) dl)))))))
+    (if getter
+      (.addDocumentListener (.getDocument view) dl))))
 
 (defn link-in
   "Hooks a GUI item to a data item in a map found by ks a seq of keys"
@@ -294,7 +308,8 @@
     ; Setup the view
     (frame "Motor monitor"
            (.add (label temp "%f degrees C"))
-           (.add (text-field temp str (memfn Double/parseDouble))))
+           (.add (text-field temp (comp str int)
+                             #(Double/parseDouble %1))))
     (loop []
       ; Data model changes...
       ; We don't need to update the view explicitly. It updates itself.
@@ -308,4 +323,4 @@
          ;(button "Add entry" (add-entry))
          ;(button "View table" (view-table))))
 
-
+(simple-demo)

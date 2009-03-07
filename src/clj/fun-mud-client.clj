@@ -47,7 +47,8 @@
         (doto (proxy [javax.swing.JPanel] []
                 (paintComponent [#^java.awt.Graphics g]
                   (.drawImage g back-image 0 0
-                              (.getWidth this) (.getHeight this) nil)
+                              (.getWidth #^javax.swing.JPanel this)
+                              (.getHeight #^javax.swing.JPanel this) nil)
                   (.drawImage g char-image @x @y +char-size+ +char-size+ nil)
                   (proxy-super paintComponent g)))
           (.setOpaque false)))

@@ -24,24 +24,58 @@
 
 (def icons {:warrior (javax.swing.ImageIcon. "warrior.jpg")
             :hunter (javax.swing.ImageIcon. "hunter.jpg")
-            :warlock (javax.swing.ImageIcon. "warlock.jpg")})
+            :warlock (javax.swing.ImageIcon. "warlock.jpg")
+            :monster (javax.swing.ImageIcon. "monster.jpg")
+            :enemy (javax.swing.ImageIcon. "enemy.jpg")
+            :princess (javax.swing.ImageIcon. "princess.jpg")
+            :loot (javax.swing.ImageIcon. "loot.jpg")})
 (def login-screen)
-(def +char-size+ 64)
+(def +size+ 64)
 (defn play-screen
   [#^java.awt.Window window, character]
   (stop-midi)
   (let [width (.getWidth window)
         height (.getHeight window)
-        x (atom (/ (- width +char-size+) 2))
-        y (atom (/ (- height +char-size+) 2))
-        move (fn [dx dy]
-               (swap! x inside 0 (- (dec width) +char-size+)
-                      + (* dx +char-size+))
-               (swap! y inside 0 (- (dec height) +char-size+)
-                      + (* dy +char-size+))
+        world (atom {:player-x (/ (- width +size+) 2)
+                     :player-y (/ (- height +size+) 2)
+                     :loot-x (rand (- width +size+))
+                     :loot-y (rand (- height +size+))
+                     :princess-x (rand (- width +size+))
+                     :princess-y (rand (- height +size+))
+                     :monster-x (rand (- width +size+))
+                     :monster-y (rand (- height +size+))
+                     :enemy-x (rand (- width +size+))
+                     :enemy-y (rand (- height +size+))})
+        move (fn [entity-x entity-y dx dy]
+               (swap! world #(assoc %1 entity-x
+                                    (inside (%1 entity-x)
+                                            0 (- (dec width) +size+)
+                                            + (* dx +size+))))
+               (swap! world #(assoc %1 entity-y
+                                    (inside (%1 entity-y)
+                                            0 (- (dec height) +size+)
+                                            + (* dy +size+))))
                (.repaint window))
         back-image (.getImage (javax.swing.ImageIcon. "play.png"))
-        char-image (.getImage (icons :warrior))]
+        char-image (.getImage (icons :warrior))
+        enemy-image (.getImage (icons :enemy))
+        monster-image (.getImage (icons :monster))
+        loot-image (.getImage (icons :loot))
+        princess-image (.getImage (icons :princess))
+        timer (doto (java.util.Timer.)
+                (.schedule (proxy [java.util.TimerTask] []
+                             (run []
+                                  (move :enemy-x :enemy-y
+                                        (dec (int (rand 3)))
+                                        (dec (int (rand 3))))
+                                  (move :monster-x :monster-y
+                                        (dec (int (rand 3)))
+                                        (dec (int (rand 3))))
+                                  (move :princess-x :princess-y
+                                        (dec (int (rand 3)))
+                                        (dec (int (rand 3))))))
+                           (long 1000)
+                           (long 1000)))]
     (doto window
       (.setContentPane
         (doto (proxy [javax.swing.JPanel] []
@@ -49,24 +83,39 @@
                   (.drawImage g back-image 0 0
                               (.getWidth #^javax.swing.JPanel this)
                               (.getHeight #^javax.swing.JPanel this) nil)
-                  (.drawImage g char-image @x @y +char-size+ +char-size+ nil)
+                  (.drawImage g loot-image
+                              (@world :loot-x) (@world :loot-y)
+                              +size+ +size+ nil)
+                  (.drawImage g monster-image
+                              (@world :monster-x) (@world :monster-y)
+                              +size+ +size+ nil)
+                  (.drawImage g enemy-image
+                              (@world :enemy-x) (@world :enemy-y)
+                              +size+ +size+ nil)
+                  (.drawImage g princess-image
+                              (@world :princess-x) (@world :princess-y)
+                              +size+ +size+ nil)
+                  (.drawImage g char-image
+                              (@world :player-x) (@world :player-y)
+                              +size+ +size+ nil)
                   (proxy-super paintComponent g)))
           (.setOpaque false)))
       (.setLayout (java.awt.GridBagLayout.)))
   (play-midi "HUMAN1.MID")
   (screen window blocker
-          [[(button "N" evt (move 0 -1))
+          [[(button "N" evt (move :player-x :player-y 0 -1))
             :gridx 2 :gridy 1]
-           [(button "S" evt (move 0 1))
+           [(button "S" evt (move :player-x :player-y 0 1))
             :gridx 2 :gridy 3]
-           [(button "E" evt (move 1 0))
+           [(button "E" evt (move :player-x :player-y 1 0))
             :gridx 3 :gridy 2]
-           [(button "W" evt (move -1 0))
+           [(button "W" evt (move :player-x :player-y -1 0))
             :gridx 1 :gridy 2]
            [(button "Logout" evt
                     (stop-midi)
                     (set-background window "splash.jpg")
                     (play-midi "TITLE.MID")
+                    (.cancel timer)
                     (.put blocker true))
             :anchor java.awt.GridBagConstraints/SOUTHEAST
             :gridx 4 :gridy 4 :weightx 1 :weighty 1]]

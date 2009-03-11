@@ -323,4 +323,4 @@
          ;(button "Add entry" (add-entry))
          ;(button "View table" (view-table))))
 
-(simple-demo)
+;(simple-demo)

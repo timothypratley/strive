@@ -1,0 +1,79 @@
+<project name="strive" default="jar">
+
+  <description>
+    Build with "ant"
+  </description>
+
+  <property name="src" location="src"/>
+  <property name="build" location="classes"/>
+  <property name="jarfile" location="strive.jar"/>
+
+  <available property="hasclojure" file="${clojure.jar}"/>
+
+  <target name="init" depends="clean">
+    <tstamp/>
+    <mkdir dir="${build}"/>
+  </target>
+
+  <target name="clean" description="Remove generated files and directories.">
+    <delete file="${jarfile}"/>
+    <delete dir="${build}"/>
+  </target>
+
+  <target name="compile_clojure" depends="init"
+          description="Compile Clojure sources."
+          if="hasclojure">
+    <java classname="clojure.lang.Compile">
+      <classpath>
+        <path location="${build}"/>
+        <path location="${src}"/>
+        <path location="${clojure.jar}"/>
+      </classpath>
+      <sysproperty key="clojure.compile.path" value="${build}"/>
+      <arg value="clojure.contrib.accumulators"/>
+      <arg value="clojure.contrib.command-line"/>
+      <arg value="clojure.contrib.cond"/>
+      <arg value="clojure.contrib.def"/>
+      <arg value="clojure.contrib.duck-streams"/>
+      <arg value="clojure.contrib.except"/>
+      <arg value="clojure.contrib.fcase"/>
+      <arg value="clojure.contrib.import-static"/>
+      <arg value="clojure.contrib.javadoc"/>
+      <arg value="clojure.contrib.lazy-seqs"/>
+      <arg value="clojure.contrib.mmap"/>
+      <arg value="clojure.contrib.macros"/>
+      <arg value="clojure.contrib.monads"/>
+      <arg value="clojure.contrib.ns-utils"/>
+      <arg value="clojure.contrib.probabilities.dist"/>
+      <arg value="clojure.contrib.prxml"/>
+      <arg value="clojure.contrib.repl-ln"/>
+      <arg value="clojure.contrib.repl-utils"/>
+      <arg value="clojure.contrib.seq-utils"/>
+      <arg value="clojure.contrib.set"/>
+      <arg value="clojure.contrib.server-socket"/>
+      <arg value="clojure.contrib.sql.internal"/>
+      <arg value="clojure.contrib.sql"/>
+      <arg value="clojure.contrib.str-utils"/>
+      <arg value="clojure.contrib.stream-utils"/>
+      <arg value="clojure.contrib.test-clojure"/>
+      <arg value="clojure.contrib.test-is"/>
+      <arg value="clojure.contrib.trace"/>
+      <arg value="clojure.contrib.types"/>
+      <arg value="clojure.contrib.zip-filter"/>
+      <arg value="clojure.contrib.graph"/>
+    </java>
+  </target>
+
+  <target name="jar" description="Create jar file." depends="compile_clojure">
+    <jar jarfile="${jarfile}">
+      <fileset file="epl-v10.html"/>
+      <fileset dir="${src}" includes="**/*.clj"/>
+      <fileset dir="${build}" includes="**/*.class"/>
+      <manifest>
+        <attribute name="Class-Path" value="."/>
+      </manifest>
+    </jar>
+  </target>
+
+</project>
+

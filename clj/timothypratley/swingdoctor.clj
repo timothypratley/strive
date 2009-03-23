@@ -11,16 +11,18 @@
   (:import
      (clojure.lang Agent Atom Ref)
      (java.awt Component GridBagLayout GridBagConstraints
-               GraphicsEnvironment Graphics)
-     (java.awt.event ActionListener)
+               GraphicsEnvironment Graphics EventQueue AWTEvent Toolkit)
+     (java.awt.event ActionListener KeyEvent ActionEvent)
      (javax.swing JTextField JLabel JPanel JPasswordField JFrame
-                  ImageIcon)
+                  ImageIcon Action KeyStroke InputMap ActionMap)
      (javax.sound.midi MidiSystem)
      (javax.sound.sampled AudioSystem DataLine$Info Clip AudioInputStream)
      (java.io File)))
 
 
 ; General helpers
+
+(defn maybe-cast [c i] (try (cast c i) (catch Throwable t)))
 
 (defn reference-reset!
   "Resets the value of any reference"
@@ -49,6 +51,8 @@
 
 
 ; Swing helpers
+
+(declare add-global-hotkey)
 
 (defmacro later
   "Invokes body on the swing event thread"
@@ -114,6 +118,107 @@
       .getDefaultScreenDevice
       (.setFullScreenWindow window))))
 
+(defn set-background
+  "Sets an image as the background of a JFrame"
+  [#^java.awt.Window window, #^String filename]
+  (let [image (.getImage (ImageIcon. filename))]
+    (doto window
+      (.setContentPane
+        (doto (proxy [JPanel] []
+                (paintComponent [#^Graphics g]
+                  (.drawImage g image 0 0
+                              (.getWidth #^JPanel this)
+                              (.getHeight #^JPanel this) nil)
+                  (proxy-super paintComponent g)))
+          (.setOpaque false)))
+       (.setLayout (GridBagLayout.)))))
+
+(defn create-action
+  "Creates an implementation of AbstractAction."
+  ([action-name behavior options] 
+   (let [action (proxy [javax.swing.AbstractAction] [action-name]
+                  (actionPerformed [event] (behavior event)))]
+     (if options
+       (doseq [k (keys options)] (.putValue action k (options k))))
+     action))
+  ([#^String action-name, behavior, #^String key-string, #^String desc]
+   (create-action
+     action-name behavior
+     {Action/ACTION_COMMAND_KEY action-name
+      Action/SHORT_DESCRIPTION desc
+      Action/ACCELERATOR_KEY (KeyStroke/getKeyStroke key-string)})))
+
+(let [DEBUG false
+      input-map (InputMap.)
+      action-map (ActionMap.)
+      #^EventQueue global-hotkey-manager
+        (proxy [EventQueue] []
+          (dispatchEvent
+            [#^AWTEvent event]
+            (if-not (if-let [ke (maybe-cast KeyEvent event)]
+                      (let [ks (KeyStroke/getKeyStrokeForEvent ke)]
+                        (when DEBUG (println "KeyStroke=" ks))
+                          (when-let [ak (.get input-map ks)]
+                            (when DEBUG (println "ActionKey=" ak))
+                            (if-let [action (.get action-map ak)]
+                              (when (.isEnabled action)
+                                (.actionPerformed
+                                  action
+                                  (ActionEvent. (.getSource event)
+                                                (.getID event) 
+                                                ak (.getModifiers ke)))
+                                true)))))
+              (proxy-super dispatchEvent event))))]
+  (-> (Toolkit/getDefaultToolkit)
+    .getSystemEventQueue
+    (.push global-hotkey-manager))
+  (defn add-global-hotkey
+    "Adds a global hotkey. The action must contain an ACTION_COMMAND_KEY
+    and an ACCELERATOR_KEY."
+    [#^Action action]
+    (when DEBUG (println "add action: " action))
+    (when DEBUG (println "ack" (.getValue action (Action/ACTION_COMMAND_KEY))))
+    (when DEBUG (println "ak" (.getValue action (Action/ACCELERATOR_KEY))))
+    (if-let [action-key (.getValue action (Action/ACTION_COMMAND_KEY))]
+      (when-let [key-stroke (.getValue action (Action/ACCELERATOR_KEY))]
+        (when DEBUG (println "action-key:" action-key "key-stroke" key-stroke))
+        (.put input-map key-stroke action-key)
+        (.put action-map action-key action)
+        action))))
+
+
+  (comment no longer required
+(defn input-map
+  "Map a key to a function"
+  [#^java.awt.Window window name key-event func & args]
+  (-> window .getRootPane .getActionMap
+    (.put name (proxy [javax.swing.AbstractAction] []
+                 (actionPerformed [#^java.awt.event.ActionEvent a] 
+                                  (println "ACTION!")
+                                  (apply func args)))))
+  (-> window .getRootPane
+    (.getInputMap javax.swing.JComponent/WHEN_IN_FOCUSED_WINDOW)
+    (.put (javax.swing.KeyStroke/getKeyStroke key-event 0) name)))
+           )
+
+(comment If you really just wanted a function to key binding
+(let [key-map (ref {})
+      evq (proxy [EventQueue] []
+            (dispatchEvent
+              [#^AWTEvent event]
+              (if-not (if-let [ke (maybe-cast KeyEvent event)]
+                        (let [ks (KeyStroke/getKeyStrokeForEvent ke)]
+                          (println "KeyStroke=" ks)
+                          (when-let [f (key-map ks)]
+                            (println "f=" f)
+                            (f)
+                            true)))
+                (proxy-super dispatchEvent event))))]
+         )
+)
+
+; Screen navigation helpers
+
 (defmacro screen
   "Adds elements with layout constraints to window.
   blocker is a symbol for use in creating a navigation event.
@@ -136,33 +241,6 @@
   (if-let [f (first next)]
     (recur window (f window (second next)))
     (.dispose window)))
-
-(defn set-background
-  "Sets an image as the background of a JFrame"
-  [#^java.awt.Window window, #^String filename]
-  (let [image (.getImage (ImageIcon. filename))]
-    (doto window
-      (.setContentPane
-        (doto (proxy [JPanel] []
-                (paintComponent [#^Graphics g]
-                  (.drawImage g image 0 0
-                              (.getWidth #^JPanel this)
-                              (.getHeight #^JPanel this) nil)
-                  (proxy-super paintComponent g)))
-          (.setOpaque false)))
-       (.setLayout (GridBagLayout.)))))
-
-(defn input-map
-  "Map a key to a function"
-  [#^java.awt.Window window name key-event func & args]
-  (-> window .getRootPane .getActionMap
-    (.put name (proxy [javax.swing.AbstractAction] []
-                 (actionPerformed [#^java.awt.event.ActionEvent a] 
-                                  (println "ACTION!")
-                                  (apply func args)))))
-  (-> window .getRootPane
-    (.getInputMap javax.swing.JComponent/WHEN_IN_FOCUSED_WINDOW)
-    (.put (javax.swing.KeyStroke/getKeyStroke key-event 0) name)))
 
 
 ; MVC helpers
@@ -324,3 +402,4 @@
          ;(button "View table" (view-table))))
 
 ;(simple-demo)
+

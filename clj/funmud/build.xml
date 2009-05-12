@@ -1,4 +1,4 @@
-<project name="strive" default="jar">
+<project name="funmud" default="jar">
 
   <description>
     Build with "ant"
@@ -6,7 +6,7 @@
 
   <property name="src" location="src"/>
   <property name="build" location="classes"/>
-  <property name="jarfile" location="strive.jar"/>
+  <property name="jarfile" location="funmud.jar"/>
 
   <available property="hasclojure" file="${clojure.jar}"/>
 
@@ -20,8 +20,8 @@
     <delete dir="${build}"/>
   </target>
 
-  <target name="compile_clojure" depends="init"
-          description="Compile Clojure sources."
+  <target name="compile" depends="init"
+          description="Compile sources."
           if="hasclojure">
     <java classname="clojure.lang.Compile">
       <classpath>
@@ -34,7 +34,7 @@
     </java>
   </target>
 
-  <target name="jar" description="Create jar file." depends="compile_clojure">
+  <target name="jar" description="Create jar file." depends="compile">
     <jar jarfile="${jarfile}">
       <fileset file="epl-v10.html"/>
       <fileset dir="${src}" includes="**/*.clj"/>

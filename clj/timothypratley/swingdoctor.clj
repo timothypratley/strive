@@ -22,7 +22,10 @@
 
 ; General helpers
 
-(defn maybe-cast [c i] (try (cast c i) (catch Throwable t)))
+(defn maybe-cast
+  "Just like cast, but does not throw an exception. Returns nil on failure."
+  [c inst]
+  (try (cast c inst) (catch Throwable t)))
 
 (defn reference-reset!
   "Resets the value of any reference"

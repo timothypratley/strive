@@ -1,4 +1,5 @@
-(ns timothypratley.extensions)
+(ns timothypratley.extensions
+  (:use timothypratley.logging))
 
 (defmacro while-let
   "while with a binding"
@@ -16,4 +17,7 @@
        (when (~pred ~v)
          ~@body
          (recur)))))
+(defmacro long-future
+  [& body]
+  `(future (try ~@body (catch Exception e# (log :severe e#)))))
 

@@ -1,5 +1,5 @@
 (ns timothypratley.messenger
-  (:use timothypratley.extensions))
+  (:use timothypratley.extensions timothypratley.logging))
 
 (declare new-connection add-connection
          read-messages write-messages process-messages)

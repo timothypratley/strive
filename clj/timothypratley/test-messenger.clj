@@ -1,5 +1,5 @@
 (ns test-messenger
-  (:use clojure.test timothypratley.messenger timothypratley.extensions))
+  (:use clojure.test timothypratley.messenger timothypratley.logging))
 
 (log-format)
 (log-level :finest)

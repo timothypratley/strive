@@ -22,6 +22,11 @@
 
 ; General helpers
 
+(defmacro debug
+  "Debugging shorthand"
+  [expr]
+  `(let [a# ~expr] (println "DEBUG:" '~expr "=" a#) a#))
+
 (defn maybe-cast
   "Just like cast, but does not throw an exception. Returns nil on failure."
   [c inst]

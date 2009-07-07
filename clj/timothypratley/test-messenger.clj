@@ -4,7 +4,7 @@
 (log-format)
 (log-level :finest)
 
-(deftest sends-and-receives-messages
+(deftest send-and-receive-message
   (let [message {:id 404 :data "hello world"}
         result (ref nil)
         server-protocol (fn [m]

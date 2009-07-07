@@ -11,6 +11,7 @@
                           (log :info "Server received: " m)
                           ; NB: this goes outside the test scope
                           ; (is (= m message))
+                          ; so instead save the result in a ref
                           (dosync (ref-set result m))
                           :bye)
         client-protocol (fn [m]

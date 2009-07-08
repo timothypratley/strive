@@ -31,7 +31,7 @@
   [port protocol]
   (let [listener (java.net.ServerSocket. port)]
     (log :info "Listening on " listener)
-    (long-future
+    (logged-future
       (try
         (while-let [s (.accept listener)]
           (log :info "Accepted connection from " s)
@@ -78,9 +78,9 @@
         out (java.util.concurrent.LinkedBlockingQueue.)
         connection {:in in :out out :socket socket}]
      (add-connection connection)
-     (long-future (read-messages connection read-stream in read-message))
-     (long-future (write-messages connection write-stream out write-message))
-     (long-future (process-messages connection protocol))
+     (logged-future (read-messages connection read-stream in read-message))
+     (logged-future (write-messages connection write-stream out write-message))
+     (logged-future (process-messages connection protocol))
      connection)))
 
 (defn- add-connection

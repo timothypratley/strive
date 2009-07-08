@@ -1,5 +1,5 @@
 (ns timothypratley.logging
-  (:use [clojure.contrib.str-utils :only (re-sub)])
+  (:use [clojure.contrib.str-utils :only (re-sub)] timothypratley.extensions)
   (:import (java.util.logging Logger Level Formatter ConsoleHandler)
      (java.text SimpleDateFormat)
      (java.util Date)
@@ -20,14 +20,9 @@
 
 ; Stephen C. Gilardi   	
 (defmacro current-function-name
-  "Returns a string, the name of the current Clojure function"
+  "Returns a string, the name of the current Clojure function."
   []
   `(-> (Throwable.) .getStackTrace first .getClassName unmangle))
-
-(defmacro defn-doc
-  "TODO: fix me"
-  [fun doc-str & body]
-  `(defn ~(str doc-str) ~fun ~@body))
 
 (let [logger (Logger/getLogger "timothypratley.extensions.log")
       a (agent nil)
@@ -42,33 +37,34 @@
   (.addHandler logger (ConsoleHandler.))
   (.setUseParentHandlers logger false)
 
-  (defn log*
-    "Log a message."
+  (defn-with-doc log*
+    (str "Log a message. level should be one of:
+  " (keys m))
     [level thread fun & text]
     (send-off a (fn [_]
                   (.logp logger (m level) thread fun (apply str text)))))
 
-  (defmacro log
-    "Log a message.
-    Buffers messages sequentially so multiple thread logs will not overlap.
-    level should be one of:
-    (keys m)"
+  (defmacro-with-doc log
+    (str "Log a message.
+  Buffers messages sequentially so multiple thread logs will not overlap.
+  level should be one of:
+  " (keys m))
     [level & text]
     `(log* ~level
            (.getName (Thread/currentThread))
            (current-function-name)
            ~@text))
 
-  (defn log-level
-    "Sets the current log level to one of:
-    (keys m)"
+  (defn-with-doc log-level
+    (str "Sets the current log level to one of:
+  " (keys m))
     [level]
     (.setLevel logger (m level))
     (doseq [h (.getHandlers logger)]
       (.setLevel h (m level))))
 
   (defn log-format
-    "Sets the log formatter"
+    "Sets the log formatter."
     ([]
      (log-format
           (let [sdf (SimpleDateFormat. "yyyy/MM/dd HH:mm:ss")]
@@ -92,7 +88,7 @@
 (defmacro debug
   "Debugging shorthand.
   Will evaluate and log debug info about expr.
-  NB: you must (log-level :fine) to see the output."
+  You must call (log-level :fine) to see the output."
   [expr]
   `(let [a# ~expr] (log :fine "DEBUG " '~expr "=" a#) a#))
 
@@ -109,26 +105,6 @@
           (if (> (.length s) 0)
             (log level s)))))
     true))
-
-(comment
-(defn logging-output-stream
-  [level]
-  (PrintStream.
-      (proxy [ByteArrayOutputStream] []
-        (write [b]
-            (proxy-super write b)))))
-
-(defn logging-output-stream
-  [level]
-  (PrintStream.
-    (let [baos (ByteArrayOutputStream.)]
-      (proxy [OutputStream] []
-        (write [b]
-          (if (= b \newline)
-            (do (log level (.trim (.toString baos)))
-              (.reset baos))
-            (.write baos b)))))))
-  )
 
 (defmacro log-capture
   "Captures stderr and stdout for logging.
@@ -149,4 +125,9 @@
        (log-wait))
      (System/setOut old-out#)
      (System/setErr old-err#)))
+
+(defmacro logged-future
+  "Capture exception of a long running future for logging."
+  [& body]
+  `(future (try ~@body (catch Exception e# (log :severe e#)))))
 

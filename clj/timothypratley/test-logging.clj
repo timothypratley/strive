@@ -17,6 +17,9 @@
     (log :finest "Hello from :finest")
     (debug (+ 1 2))
     @(future (debug *out*))
+    (logged-future (/ 1 0))
+    ; wait without forcing the future
+    (Thread/sleep 1000)
     (is (= *out* out-orig))
     (is (= *err* err-orig))))
 

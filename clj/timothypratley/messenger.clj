@@ -9,8 +9,9 @@
 
 (defn connect
   "Connect to a message server.
-  protocol is a user supplied function which will be passed a message.
-  protocol should take a message, which is a map containing a key :message_id
+  protocol is a user supplied function which will be passed a
+  connection and message.
+  protocol should take a message, which is a map containing a key :message-id
   to dispatch processing upon.
   protocol can return :bye to end the connection"
   [host port protocol]
@@ -104,7 +105,7 @@
   [connection protocol]
   (log :finest "Processor started for " (:socket connection))
   (while-let-pred [message (.take (:in connection))] (partial not= :bye)
-    (if-let [result (protocol message)]
+    (if-let [result (protocol message connection)]
       (.put (:out connection) result)))
   (log :finest "Processor closed for " (:socket connection))
   (remove-connection connection))

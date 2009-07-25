@@ -1,5 +1,10 @@
 (ns timothypratley.extensions)
 
+(defmacro switch
+  [v & body]
+  `(condp (partial = ~v)
+     ~@body))
+
 (defmacro while-let
   "while with a binding"
   [[v cnd] & body]
@@ -24,6 +29,7 @@
   `(let [f# (defn ~fun ~@body)]
      (alter-meta! (var ~fun) assoc :doc ~doc-str)
      f#))
+
 (defmacro defmacro-with-doc
   "Like defmacro but accepts a procedurally generated string."
   [macro doc-str & body]

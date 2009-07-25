@@ -121,10 +121,11 @@
      (System/setErr new-err#)
      (binding [*out* (PrintWriter. new-out# true)
                *err* (PrintWriter. new-err# true)]
-       ~@body
-       (log-wait))
-     (System/setOut old-out#)
-     (System/setErr old-err#)))
+       (let [result# (do ~@body)]
+         (log-wait)
+         (System/setOut old-out#)
+         (System/setErr old-err#)
+         result#))))
 
 (defmacro logged-future
   "Capture exception of a long running future for logging."

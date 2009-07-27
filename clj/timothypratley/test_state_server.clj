@@ -13,12 +13,16 @@
                clients [(connect-to-state-server host port)
                         (connect-to-state-server host port)
                         (connect-to-state-server host port)]]
-           (send-message (debug (first clients))
+           (send-message (first clients)
                          {:message-id :subscribe
-                          :query "?hello"})
+                          :query "hello"})
            (doseq [c clients]
-             (send-message c m)
+             (send-message c m))
+           (Thread/sleep 1000)
+           ; TODO: why do we need to explicitly close them?
+           (doseq [c clients]
              (send-message c :bye))
+           ; and sleep - this is broken
            (Thread/sleep 1000)
            (.close server)))
 

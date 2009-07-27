@@ -10,37 +10,37 @@
 (def subscriptions (ref {}))
 
 (defn inform-subscribers
-  [ks m]
-  (log :info ks m))
+  [ks v]
+  (doseq [[connection queries] @subscriptions]
+    (if (queries ks)
+      (send-message connection {:message-id :status
+                              :label ks
+                              :data v}))))
 
-(defn watched-assoc-in
+(defn watched-assoc
   [m ks v]
   (inform-subscribers ks v)
-  (assoc-in m ks v))
-
-(defn assoc-conj
-  "Add to a collection in a map."
-  [m k v]
-  (assoc m k (conj (m k) v)))
+  (assoc m ks v))
 
 (defmulti state-server-protocol :message-id)
 (defmethod state-server-protocol :default
   [message connection]
-  (log :info connection "Bad message received: " message)
-  nil)
+  (log :info "SERVER Bad message received: " message " from "
+       (:socket connection))
+  :bye)
 (defmethod state-server-protocol :status
   [message connection]
-  (dosync (alter world watched-assoc-in (:label message) (:data message)))
+  (dosync (alter world watched-assoc (:label message) (:data message)))
+  (log :info "SERVER world=" @world)
   nil)
 (defmethod state-server-protocol :subscribe
   [message connection]
-  (dosync (alter subscriptions assoc-conj connection (:query message)))
+  (dosync (alter subscriptions assoc-conj connection (:query message) #{}))
   nil)
 
 (defn run-state-server
   [port]
   (log-format)
-  (log-level :finest)
+  (log-level :fine)
   (listen port state-server-protocol))
-
 

@@ -20,7 +20,7 @@
     (new-connection s protocol)))
 
 (defn send-message
-  "Send a message.
+  "Send a message to connection.
   A message is a map containing an :id and :data"
   [connection message]
   (.put (:out connection) message))

@@ -37,27 +37,27 @@
   (.addHandler logger (ConsoleHandler.))
   (.setUseParentHandlers logger false)
 
-  (defn-with-doc log*
-    (str "Log a message. level should be one of:
-  " (keys m))
+  (defn log*
+    {:doc (str "Log a message. level should be one of:
+  " (keys m))}
     [level thread fun & text]
     (send-off a (fn [_]
                   (.logp logger (m level) thread fun (apply str text)))))
 
-  (defmacro-with-doc log
-    (str "Log a message.
+  (defmacro log
+    {:doc (str "Log a message.
   Buffers messages sequentially so multiple thread logs will not overlap.
   level should be one of:
-  " (keys m))
+  " (keys m))}
     [level & text]
     `(log* ~level
            (.getName (Thread/currentThread))
            (current-function-name)
            ~@text))
 
-  (defn-with-doc log-level
-    (str "Sets the current log level to one of:
-  " (keys m))
+  (defn log-level
+    {:doc (str "Sets the current log level to one of:
+  " (keys m))}
     [level]
     (.setLevel logger (m level))
     (doseq [h (.getHandlers logger)]

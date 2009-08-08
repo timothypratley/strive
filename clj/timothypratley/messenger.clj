@@ -13,7 +13,9 @@
   connection and message.
   protocol should take a message, which is a map containing a key :message-id
   to dispatch processing upon.
-  protocol can return :bye to end the connection"
+  protocol can return :bye to end the connection.
+  A connection is a map containing an in queue, out queue, socket,
+  and a state ref for storing user data."
   [host port protocol]
   (log :info "Connecting to " host ":" port)
   (let [s (java.net.Socket. host port)]
@@ -77,7 +79,10 @@
   ([socket protocol read-message read-stream write-message write-stream]
    (let [in (java.util.concurrent.LinkedBlockingQueue.)
         out (java.util.concurrent.LinkedBlockingQueue.)
-        connection {:in in :out out :socket socket}]
+        connection {:in in
+                    :out out
+                    :socket socket
+                    :state (ref nil)}]
      (add-connection connection)
      (logged-future (read-messages connection read-stream in read-message))
      (logged-future (write-messages connection write-stream out write-message))
@@ -104,9 +109,12 @@
   "Deal with messages that are ready for processing."
   [connection protocol]
   (log :finest "Processor started for " (:socket connection))
-  (while-let-pred [message (.take (:in connection))] (partial not= :bye)
-    (if-let [result (protocol message connection)]
-      (.put (:out connection) result)))
+  (try
+    (while-let-pred [message (.take (:in connection))] (partial not= :bye)
+      (if-let [result (protocol message connection)]
+        (.put (:out connection) result)))
+    (catch Exception e
+      (log :warning "Could not process " message)))
   (log :finest "Processor closed for " (:socket connection))
   (remove-connection connection))
 

@@ -1,7 +1,9 @@
 (ns timothypratley.robots.test
   (:use clojure.test
-     timothypratley.robot.server timothypratley.robot.client
-     timothypratley.messenger timothypratley.logging))
+     timothypratley.robots.server
+     timothypratley.robots.client
+     timothypratley.messenger
+     timothypratley.logging))
 
 (deftest can-send-status
          (let [host "localhost"
@@ -10,16 +12,16 @@
                clients [(connect-to-state-server host port)
                         (connect-to-state-server host port)
                         (connect-to-state-server host port)]
-               m {:message-id :status
+               m {:id :status
                   :data {:x 3700.0, :y 3600.0, :v 4.3, :i 0.5}}]
            ; wow ugly
-           (loop [c clients, i 1]
-             (when (first c)
-               (send-message (first c) {:message-id :login
+           (loop [cs clients, i 1]
+             (when (first cs)
+               (send-message (first cs) {:id :login
                                         :name (str "R" i)})
-               (recur (rest clients) (inc i))))
+               (recur (rest cs) (inc i))))
            (send-message (first clients)
-                         {:message-id :subscribe
+                         {:id :subscribe
                           :query :all})
            (doseq [c clients]
              (send-message c m))

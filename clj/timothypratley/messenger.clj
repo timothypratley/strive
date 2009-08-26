@@ -11,15 +11,21 @@
   "Connect to a message server.
   protocol is a user supplied function which will be passed a
   connection and message.
-  protocol should take a message, which is a map containing a key :message-id
+  protocol should take a message, which is a map containing a key :id
   to dispatch processing upon.
   protocol can return :bye to end the connection.
   A connection is a map containing an in queue, out queue, socket,
-  and a state ref for storing user data."
-  [host port protocol]
-  (log :info "Connecting to " host ":" port)
-  (let [s (java.net.Socket. host port)]
-    (new-connection s protocol)))
+  and a state ref for storing user data.
+  connection-name can be used to assign a name to the connection,
+  which just makes logging use that name instead of socket details."
+  ([host port protocol]
+   (log :info "Connecting to " host ":" port)
+   (let [s (java.net.Socket. host port)]
+     (new-connection s protocol)))
+  ([host port protocol connection-name]
+   (let [cn (connect host port protocol)]
+     (dosync (alter (:state cn) assoc :name connection-name))
+     cn)))
 
 (defn send-message
   "Send a message to connection.
@@ -44,6 +50,15 @@
     listener))
 
 (def connections (ref #{}))
+
+(defn set-connection-name
+  [connection connection-name]
+  (dosync (alter (:state connection) assoc :name connection-name)))
+(defn get-connection-name
+  [connection]
+  (if-let [nm (:name (:state connection))]
+    nm
+    (:socket connection)))
 
 
 ; An alternate encoding implementation
@@ -82,7 +97,7 @@
         connection {:in in
                     :out out
                     :socket socket
-                    :state (ref nil)}]
+                    :state (ref {})}]
      (add-connection connection)
      (logged-future (read-messages connection read-stream in read-message))
      (logged-future (write-messages connection write-stream out write-message))
@@ -109,12 +124,14 @@
   "Deal with messages that are ready for processing."
   [connection protocol]
   (log :finest "Processor started for " (:socket connection))
-  (try
-    (while-let-pred [message (.take (:in connection))] (partial not= :bye)
+  (while-let-pred [message (.take (:in connection))] (partial not= :bye)
+    (try
       (if-let [result (protocol message connection)]
-        (.put (:out connection) result)))
-    (catch Exception e
-      (log :warning "Could not process " message)))
+        (.put (:out connection) result))
+      (catch Exception e
+        (log :warning e)
+        (log :warning (get-connection-name connection)
+             "Could not process " message))))
   (log :finest "Processor closed for " (:socket connection))
   (remove-connection connection))
 

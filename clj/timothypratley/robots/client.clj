@@ -5,11 +5,18 @@
 (def local-world {:robots (ref nil)
                   :tasks (ref nil)})
 
-(defmulti state-client-protocol :message-id)
+(defmulti state-client-protocol :id)
 (defmethod state-client-protocol :default
   [message connection]
   (log :info "CLIENT Bad message received: " message " from "
        (:socket connection))
+  nil)
+(defmethod state-client-protocol :login-result
+  [message connection]
+  (if (:successful message)
+    (do (set-connection-name connection (:name message))
+      (log :info "CLIENT Successfully logged in as " (:name message)))
+    (log :info "CLIENT Login failed"))
   nil)
 (defmethod state-client-protocol :status
   [message connection]
@@ -30,5 +37,5 @@
   (log-format)
   (log-level :finest)
   (log-capture
-    (connect host port state-client-protocol)))
+    (connect host port state-client-protocol "CLIENT")))
 

@@ -5,7 +5,6 @@
   (:require [clojure.contrib.pprint :as pp]))
 
 (declare fw-step fw-walk construct-path add-paths min-path init-table)
-(def Inf Double/POSITIVE_INFINITY)
 
 
 (defn floyd-warshall

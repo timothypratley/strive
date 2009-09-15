@@ -12,6 +12,17 @@
   [nodes links]
   (reduce fw-step (init-table links) (fw-walk nodes)))
 
+(defn p-floyd-warshall
+  "Constructs all shortest paths of a graph in parallel"
+  [nodes links]
+  (let [nt (* 2 (.availableProcessors (Runtime/getRuntime)))
+        p-ij (fn p-ij [fw-table k]
+               (let [walk (for [i nodes, j nodes] [k i j])]
+                 (apply merge-with #(if %1 %1 %2)
+                        (pmap (partial reduce fw-step fw-table)
+                              (partition nt walk)))))]
+    (reduce p-ij (init-table links) (for [k nodes] k))))
+
 (defn get-path
   "Returns the shortest path between two nodes"
   [fw-table from to]
@@ -85,10 +96,15 @@
                   [6 7] 1
                   [7 8] 1
                   [8 6] 1)}
-      shortest-paths (floyd-warshall (:nodes G) (:links G))]
+      shortest-paths (p-floyd-warshall (:nodes G) (:links G))]
   (println "shortest-paths:")
   (pp/pprint shortest-paths)
   (println)
   (println "shortest-path 7 2:")
-  (pp/pprint (get-path shortest-paths 7 2)))
+  (pp/pprint (get-path shortest-paths 7 2))
+  (println "single thread:")
+  (time (floyd-warshall (:nodes G) (:links G)))
+  (println "parallel:")
+  (time (p-floyd-warshall (:nodes G) (:links G)))
+  (shutdown-agents))
 

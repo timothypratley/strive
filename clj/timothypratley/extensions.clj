@@ -10,6 +10,14 @@
   `(condp (partial = ~v)
      ~@body))
 
+(defn sign
+  "Returns 1 if x is positive, -1 if x is negative, else 0"
+  [x]
+  (cond
+    (pos? x) 1
+    (neg? x) -1
+    :else 0))
+
 (defmacro while-let
   "while with a binding"
   [[v cnd] & body]
@@ -18,6 +26,7 @@
        (when ~v
          ~@body
          (recur)))))
+
 (defmacro while-let-pred
   "while with a binding and predicate"
   [[v cnd] pred & body]
@@ -26,6 +35,15 @@
        (when (~pred ~v)
          ~@body
          (recur)))))
+
+; Chas Emerick     	
+(defmacro let-map
+   "Equivalent of (let [a 5 b (+ a 5)] {:a a :b b})."
+   [kvs]
+   (let [keys (keys (apply hash-map kvs))
+         keyword-symbols (mapcat #(vector (keyword (str %)) %) keys)]
+   `(let [~@kvs]
+      (hash-map ~@keyword-symbols))))
 
 ; Laurent Petit     	
 (defmacro mset!
@@ -97,3 +115,19 @@
   ;(defn ~name
     ;~(if *debug*
       ;(assert p a))))
+
+(defn re-fn
+  "Construct a regular expression from string.
+  Calling a regular expression with no arguments returns a Pattern.
+  Calling a regular expression with a string argument returns nil
+  if no matches, otherwise the equivalent of (re-seq restring).
+  eg: ((re-fn \"2.\") "12324251") -> ("23" "24" "25")"
+  [string]
+  (let [pp (re-pattern string)]
+    (fn re
+      ([] pp)
+      ([s] (let [groups (re-seq pp s)]
+             (if (first groups)
+               groups
+               nil))))))
+

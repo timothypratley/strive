@@ -23,6 +23,17 @@
                               (partition nt walk)))))]
     (reduce p-ij (init-table links) (for [k nodes] k))))
 
+(defn pa-floyd-warshall
+  "Parallel array implementation"
+  [nodes links]
+  (let [nt (* 2 (.availableProcessors (Runtime/getRuntime)))
+        p-ij (fn p-ij [fw-table k]
+               (let [walk (for [i nodes, j nodes] [k i j])]
+                 (apply merge-with #(if %1 %1 %2)
+                        (pmap (partial reduce fw-step fw-table)
+                              (partition nt walk)))))]
+    (reduce p-ij (init-table links) (for [k nodes] k))))
+
 (defn get-path
   "Returns the shortest path between two nodes"
   [fw-table from to]
@@ -78,6 +89,12 @@
   (reduce (fn [m [k v]] (assoc m k {:cost v, :next (second k)}))
           (sorted-map) links))
 
+(defn- init-table-array
+  "Prepares two matricies to store the costs and predecessors"
+  [links nodes]
+  (let [c (count nodes)]
+    {:costs (make-array Double/TYPE c c)
+     :preds (make-array Double/TYPE c c)}))
 
 ; Example
 

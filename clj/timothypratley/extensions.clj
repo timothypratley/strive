@@ -1,5 +1,31 @@
 (ns timothypratley.extensions)
 
+(defn repeat-n
+  "Creates a lazy sequence of n values."
+  [value n]
+  (take n (repeat value)))
+
+(defmacro ifnn
+  "If not nil."
+  [value then else]
+  `(if (not (nil? ~value)) ~then ~else))
+
+(defmacro aget2
+  "For faster lookup.
+  array is a 1d array being treated as a 2d array.
+  array should be already type-hinted,
+  and width already coorced to int."
+  [array x y width]
+  `(aget ~array (+ (int ~x) (* (int ~y) ~width))))
+
+(defmacro aset2
+  "For faster array setting.
+  array is a 1d array being treated as a 2d array.
+  array should be already type-hinted,
+  and width already coorced to int."
+  [array x y width value]
+  `(aset ~array (+ (int ~x) (* (int ~y) ~width)) ~value))
+
 (defn assoc-conj
   "Add to a collection in a map."
   [m k v default]
@@ -7,8 +33,7 @@
 
 (defmacro switch
   [v & body]
-  `(condp (partial = ~v)
-     ~@body))
+  `(condp (partial = ~v) ~@body))
 
 (defn sign
   "Returns 1 if x is positive, -1 if x is negative, else 0"
@@ -17,6 +42,54 @@
     (pos? x) 1
     (neg? x) -1
     :else 0))
+
+(defn <?
+  "Returns true if arguments are in increasing order by compare,
+  otherwise false."
+  ([x] true)
+  ([x y] (neg? (compare x y)))
+  ([x y & more]
+   (if (<? x y)
+     (if (next more)
+       (recur y (first more) (next more))
+       (<? y (first more)))
+     false)))
+
+(defn <=?
+  "Returns true if arguments are in increasing order by compare,
+  otherwise false."
+  ([x] true)
+  ([x y] (neg? (compare x y)))
+  ([x y & more]
+   (if (<=? x y)
+     (if (next more)
+       (recur y (first more) (next more))
+       (<=? y (first more)))
+     false)))
+
+(defn >?
+  "Returns true if arguments are in decreasing order by compare,
+  otherwise false."
+  ([x] true)
+  ([x y] (pos? (compare x y)))
+  ([x y & more]
+   (if (>? x y)
+     (if (next more)
+       (recur y (first more) (next more))
+       (>? y (first more)))
+     false)))
+
+(defn >=?
+  "Returns true if arguments are in decreasing order by compare,
+  otherwise false."
+  ([x] true)
+  ([x y] (pos? (compare x y)))
+  ([x y & more]
+   (if (>=? x y)
+     (if (next more)
+       (recur y (first more) (next more))
+       (>=? y (first more)))
+     false)))
 
 (defmacro while-let
   "while with a binding"
@@ -121,8 +194,8 @@
   Calling a regular expression with no arguments returns a Pattern.
   Calling a regular expression with a string argument returns nil
   if no matches, otherwise the equivalent of (re-seq restring).
-  eg: ((re-fn \"2.\") "12324251") -> ("23" "24" "25")"
-  [string]
+  eg: ((re-fn \"2.\") \"12324251\") -> (\"23\" \"24\" \"25\")"
+  [#^String string]
   (let [pp (re-pattern string)]
     (fn re
       ([] pp)
@@ -130,4 +203,13 @@
              (if (first groups)
                groups
                nil))))))
+
+(defmacro amap-in-place
+  [a idx ret expr]
+  `(let [a# ~a]
+     (loop [~idx (int 0)]
+       (when (< ~idx (alength a#))
+         (aset a# ~idx ~expr)
+         (recur (unchecked-inc ~idx))))
+     a#))
 

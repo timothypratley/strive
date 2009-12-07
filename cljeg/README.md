@@ -16,5 +16,10 @@ installed to your local Maven repository:
 Then execute
 	mvn jetty:run
 
-And you can view the appliation at http://localhost:8080/cljeg
+And you can view the appliation at
+[http://localhost:8080/cljeg](http://localhost:8080/cljeg)
+
+Or if you want to deploy it, you can create a WAR like so:
+	mvn install
+Then look in the target directory for cljeg-1.0-SNAPSHOT.war
 

@@ -1,0 +1,23 @@
+(define (product func lo hi)
+  (define (product-iter i result)
+    (if (> i hi)
+      result
+      (product-iter (+ 1 i) (* result (func i)))))
+  (product-iter lo 1))
+
+(define (mod a b)
+  (if (< (- a b) 0)
+    a
+    (mod (- a b) b)))
+
+(define (approx-pi acc)
+  (define (factors a)
+    (define basic-num
+         (if (= (mod a 2) 0)
+             (/ a 2)
+             (/ (- a 1) 2)))
+    (if (= (mod basic-num 2) 0)
+      basic-num
+      (/ 1 basic-num)))
+  (* 4 (product factors 5 (* 2 acc))))
+

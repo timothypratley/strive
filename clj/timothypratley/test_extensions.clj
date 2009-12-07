@@ -23,5 +23,14 @@
   (is (= 1 (foo1 "hi" :one)))
   (is (= 1 (foo2 "hi" :one))))
 
-(run-tests)
+(deftest fun
+         (defnc foo3
+                "hi3"
+                {:arglist [in1 string?
+                           in2 !(str "one of " (keys m)) m]
+                 :argdesc ["in1desc" (str "one of " (keys m))]
+                 :argpred [string? m]}
 
+
+
+(run-tests)

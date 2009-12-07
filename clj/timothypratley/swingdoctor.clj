@@ -348,6 +348,16 @@
      (.add (JLabel. label))
      (.add (password-field reference)))))
 
+(defn slider
+  "Returns a JSlider which watches and updates a reference"
+  ([reference min max]
+   (doto (JSlider. min max)
+     (link (fn [#^JSlider x, y]
+             (.setPosition x y))
+           (fn [#^JSlider x]
+             (.getPosition x))
+           reference))))
+
 ; in progress
 (comment
 (defn table-model

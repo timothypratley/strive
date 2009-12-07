@@ -57,23 +57,25 @@
               :gridx 1, :gridy 4]
              [(button "Quit" evt (.put blocker :quit))
               :gridx 2, :gridy 5]]
-            [:quit nil false login-screen character-select-screen])))
+            [:quit nil
+             false login-screen
+             character-select-screen])))
 
 (defn character-select-screen
   "A list of existing characters to choose from, or create new.
   Once selected the game will start in earnest from the play-screen."
   [#^java.awt.Window window, user]
   (screen window blocker
-    (conj 
-      (vec (map #(list (doto (button (str (:name %1) " - " (name (:class %1)))
-                                     evt (.put blocker (:name %1)))
-                         (.setIcon (icons (:class %1))))
-                       :gridx 1)
-                (user :characters)))
-            [(button "Create New" evt (.put blocker :create-new))
-             :gridx 1])
-            [:create-new character-create-screen
-             false login-screen play-screen]))
+          (conj (vec (for [c (user :characters)]
+                       (doto (button (str (:name c) " - " (name (:class c)))
+                                     evt (.put blocker c))
+                         (.setIcon (icons (:class c))))
+                       :gridx 1))
+                [(button "Create New" evt (.put blocker :create-new))
+                 :gridx 1])
+          [:create-new character-create-screen
+           false login-screen
+           play-screen]))
 
 (defn character-create-screen
   "Create a new chacter to play."
@@ -86,7 +88,8 @@
               :gridx 1]
              [(button "Cancel" evt (.put blocker false))
               :gridx 2]]
-            [false login-screen play-screen])))
+            [false login-screen
+             play-screen])))
 
 (defn login
   "Pseudo login check. Returns user characters."

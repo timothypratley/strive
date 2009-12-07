@@ -31,32 +31,32 @@
                    (if (< (* +size+ 3) (java.lang.Math/abs (- r start-y)))
                      r
                      (recur))))
-        world (ref {:player {:name character
-                              :type :warrior
-                              :x start-x
-                              :y start-y
-                              :rich false
-                              :powered false}
-                     :loot {:name "Wow, Gold!"
-                            :type :loot
+        world (ref {:player {:name (character :name)
+                             :type (character :class)
+                             :x start-x
+                             :y start-y
+                             :rich false
+                             :powered false}
+                    :loot {:name "Wow, Gold!"
+                           :type :loot
+                           :x (rand-x)
+                           :y (rand-y)}
+                    :powerup {:name "Primordial Growth"
+                              :type :powerup
+                              :x (rand-x)
+                              :y (rand-y)}
+                    :princess {:name "Leia"
+                               :type :princess
+                               :x (rand-x)
+                               :y (rand-y)}
+                    :monster {:name "Cyclops"
+                              :type :monster
+                              :x (rand-x)
+                              :y (rand-y)}
+                    :enemy {:name "Machiavelli"
+                            :type :enemy
                             :x (rand-x)
-                            :y (rand-y)}
-                     :powerup {:name "Primordial Growth"
-                               :type :powerup
-                               :x (rand-x)
-                               :y (rand-y)}
-                     :princess {:name "Leia"
-                                :type :princess
-                                :x (rand-x)
-                                :y (rand-y)}
-                     :monster {:name "Cyclops"
-                               :type :monster
-                               :x (rand-x)
-                               :y (rand-y)}
-                     :enemy {:name "Machiavelli"
-                             :type :enemy
-                             :x (rand-x)
-                             :y (rand-y)}})
+                            :y (rand-y)}})
         overlap (fn [e1 e2]
                   (and (@world e1) (@world e2)
                        (> +size+ (java.lang.Math/abs
@@ -151,3 +151,33 @@
             :gridx 4 :gridy 4 :weightx 1 :weighty 1]]
           [true client.main/login-screen])))
 
+(defn overlap-check
+  "Detect when player picks up loot."
+  [world]
+  (doseq [[k entity] @world]
+    (condp = (entity :type)
+      :loot (
+      (entity :type)
+  (if (overlap world :player :loot)
+    (do
+      (println (-> world :player :name "is rich from" (-> @world :loot :name))
+      (dissoc
+        (assoc-in [:player :rich] true)
+        :loot))
+    world)))
+
+                      (when (overlap :player :powerup)
+                        (alter world assoc-in [:player :powered] true)
+                        (println "You are empowered with"
+                                 (-> @world :powerup :name))
+                        (alter world dissoc :powerup))
+                      (when (and (-> @world :player :powered)
+                                 (overlap :player :monster))
+                        (println "You killed "
+                                 (-> @world :monster :name))
+                        (alter world dissoc :monster))
+                      (when (and (-> @world :player :rich)
+                                 (overlap :player :princess))
+                        (println "You married the princess"
+                                 (-> @world :princess :name))
+                        (alter world dissoc :princess))

@@ -2,6 +2,7 @@
   (:use compojure)
   (:use clojure.contrib.duck-streams)
   (:use clojure.contrib.pprint)
+  (:use cljeg.utils)
   (:gen-class :extends javax.servlet.http.HttpServlet))
 
 (defn html-doc
@@ -17,7 +18,7 @@
           body]]))
 
 (def examples (ref {}))
-(try (with-open [r (java.io.PushbackReader. (reader "examples.clj"))]
+(try (with-open [r (java.io.PushbackReader. (reader "example-data.clj"))]
        (let [e (read r)]
          (dosync (ref-set examples e))))
   (catch Exception e))
@@ -45,8 +46,9 @@
         r (read-string result)]
     (dosync (alter examples #(assoc %1 f (conj (%1 f []) %2))
                    {:example e, :result r, :vote-ups 0, :vote-downs 0}))
-    (with-open [w (writer "examples.clj")]
-      (pprint @examples w)))
+    (with-open [w (writer "example-data.clj")]
+      (pprint @examples w))
+    (save-examples @examples))
   (html-doc "Thanks" "Thanks, your example was added."))
 #_(add-example "defn" "(defn foo [] 1)" "1")
 

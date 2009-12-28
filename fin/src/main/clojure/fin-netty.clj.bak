@@ -1,0 +1,66 @@
+(ns timothypratley.fin-netty
+  (:gen-class)
+  (:import
+     [java.net InetSocketAddress]
+     [java.util.concurrent Executors]
+     [org.jboss.netty.bootstrap ClientBootstrap]
+     [org.jboss.netty.handler.codec.http DefaultHttpRequest HttpHeaders]
+     [org.jboss.netty.channel.socket.nio NioServerSocketChannelFactory]))
+
+(declare make-bootstrap request)
+
+(defn -main [& args]
+  (println "Loading fin...")
+        String host = args[0];
+        int port = Integer.parseInt(args[1]);
+  (request (make-bootstrap) "ichart.finance.yahoo.com" 80
+           "table.csv?s=RIO.AX&a=0&b=1&c=2003&ignore=.csv"))
+
+(defn make-bootstrap
+  []
+  (let [bootstrap (ClientBootstrap.
+                    (NioClientSocketChannelFactory.
+                      (Executors.newCachedThreadPool)
+                      (Executors.newCachedThreadPool)))
+        re (proxy [HttpMessageEncoder] []
+             (encodeInitialLine [buf message]
+               (let [request (cast HttpRequest message)]
+                 (doto buf
+                   (.writeBytes (-> request .getMethod .toString
+                                  .getBytes "ASCII")
+                   (.writeBytes SP)
+                   (.writeBytes (
+        rh (proxy [SimpleChannelUpstreamHandler] []
+             (messageReceived [ctx e]
+               (let [response (.getMessage e)]
+                 (println "STATUS: " (.getStatus response))
+                 (println "VERSION: " (.getProtocolVersion response))
+                 (doseq [hn (.getHeaderNames response)]
+                   (doseq [value (.getHeaders hn)]
+                     (println "HEADER: " hn " = " value))))))
+        pf (proxy [ChannelPipelineFactory] []
+             (getPipeline []
+               (doto (.pipeline this)
+                 (.addLast "decoder" (HttpResponseDecoder.))
+                 (.addLast "encoder" (HttpRequestEncoder.))
+                 (.addLast "handler" (HttpResponseHandler.)))))]
+    (doto bootstrap
+      (.setPipelineFactory pf))))
+
+(defn request
+  [bootstrap host port uri]
+  (let [cfuture (.connect bootstrap (InetSocketAddress. host port))
+        channel (-> cfuture .awaitUninterruptibly .getChannel)]
+    (if (.isSuccess cf)
+      (let [request (DefaultHttpRequest.
+                    HttpVersion/HTTP_1_1 HttpMethod/GET (.toASCIIString uri))]
+        (doto request
+          (.setHeader HttpHeaders.Names/HOST host)
+          (.setHeader HttpHeaders.Names/CONNECTION HttpHeaders.Values/CLOSE))
+        (.write channel request)
+        (-> channel .getCloseFuture .awaitUninterruptibly))
+      (println (-> cfuture .getCause .printStackTrace))
+    (.releaseExternalResources bootstrap))))
+
+
+

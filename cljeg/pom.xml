@@ -11,7 +11,7 @@
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>clojure</artifactId>
-      <version>1.1.0-alpha-SNAPSHOT</version>
+      <version>1.1.0-master-SNAPSHOT</version>
     </dependency>
     <!-- Clojure-contrib snapshot: -->
     <dependency>

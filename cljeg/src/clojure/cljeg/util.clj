@@ -5,8 +5,11 @@
 (ns cljeg.util
   (:use clojure.test))
 
+
+; TODO: better as (update-in m ks [] conj item))?
 (defn conj-in
-  "Returns the resultant map of appending an item to a vector in map m with key k"
+  "Returns the resultant map
+  of appending an item to a vector in map m with key k"
   [m k item]
   (assoc m k (conj (get m k []) item)))
 ;(conj-in {} :a 1)
@@ -75,6 +78,18 @@
 ; Though I prefer to run the tests as part of the test-suite
 ; (run-tests)
 
+(defn save-examples
+  [examples]
+  (with-open [w (writer "examples.clj")]
+    (.write w (str "(ns examples (:use cljeg.util))" \newline \newline))
+    (doseq [ekv examples]
+      (let [k (key ekv)
+            es (val ekv)]
+        (doseq [e es]
+          (.write w (str "(example " k \newline
+                         "         " (:form e) \newline
+                         "         " (:result e) \newline
+                         "         " (:desc e) \newline)))))))
 
 ; Using a separate map as an alternative to meta-data
 ;   * Allows non-resolvable keywords

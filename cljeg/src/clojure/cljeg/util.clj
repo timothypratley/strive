@@ -1,4 +1,3 @@
-<<<<<<< HEAD:cljeg/src/clojure/cljeg/util.clj
 ; Timothy Pratley Dec 2009
 ; EPL
 ; Clojure example utilities

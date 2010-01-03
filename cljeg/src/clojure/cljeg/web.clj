@@ -1,8 +1,9 @@
 (ns cljeg.web
   (:use compojure)
-  (:use clojure.contrib.duck-streams)
   (:use clojure.contrib.pprint)
-  (:use cljeg.utils)
+  (:use clojure.contrib.duck-streams)
+  (:use cljeg.example)
+  (:use cljeg.util)
   (:gen-class :extends javax.servlet.http.HttpServlet))
 
 (defn html-doc
@@ -18,9 +19,10 @@
           body]]))
 
 (def examples (ref {}))
-(try (with-open [r (java.io.PushbackReader. (reader "example-data.clj"))]
-       (let [e (read r)]
-         (dosync (ref-set examples e))))
+(try
+  (let [es (with-open [r (java.io.PushbackReader. (reader "example-data.clj"))]
+             (read r))]
+    (dosync (ref-set examples es)))
   (catch Exception e))
 
 (defn home

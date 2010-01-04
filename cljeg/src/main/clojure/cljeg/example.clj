@@ -3,7 +3,6 @@
        :created "Dec 2009"
        :license "EPL"}
   cljeg.example
-  (:use clojure.contrib.duck-streams)
   (:use clojure.test))
 
 ; Note: cannot (declare conj-in) because macro requires it at compiled time

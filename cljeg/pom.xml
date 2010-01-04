@@ -38,7 +38,7 @@
       <artifactId>jetty</artifactId>
       <version>6.1.15</version>
     </dependency>
-    	<!-- Compojure requires CC -->
+      <!-- Compojure requires CC -->
         <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
@@ -75,6 +75,30 @@
     </resources>
     <plugins>
       <plugin>
+        <groupId>com.theoryinpractise</groupId>
+        <artifactId>clojure-maven-plugin</artifactId>
+        <version>1.1</version>
+        <configuration>
+          <testScript>src/scripts/tests.clj</testScript>
+        </configuration>
+        <executions>
+          <execution>
+            <id>compile-clojure</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>test-clojure</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>org.mortbay.jetty</groupId>
                 <artifactId>maven-jetty-plugin</artifactId>
                 <version>6.1.15</version>
@@ -88,7 +112,7 @@
                     </connectors>
                     <scanTargetPatterns>
                         <scanTargetPattern>
-                            <directory>src/clojure</directory>
+			  <directory>src/main/clojure</directory>
                             <includes>
                                 <include>**/*.clj</include>
                             </includes>
@@ -126,30 +150,6 @@
                     <target>1.5</target>
                 </configuration>
             </plugin>
-    <plugin>
-        <groupId>com.theoryinpractise</groupId>
-        <artifactId>clojure-maven-plugin</artifactId>
-        <version>1.1</version>
-        <configuration>
-          <testScript>src/scripts/runtests.clj</testScript>
-        </configuration>
-        <executions>
-          <execution>
-            <id>compile-clojure</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>test-clojure</id>
-            <phase>test</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
     </plugins>
   </build>
 </project>

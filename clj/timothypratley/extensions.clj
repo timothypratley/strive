@@ -5,32 +5,6 @@
   [value n]
   (take n (repeat value)))
 
-(defmacro ifnn
-  "If not nil."
-  [value then else]
-  `(if (not (nil? ~value)) ~then ~else))
-
-(defmacro aget2
-  "For faster lookup.
-  array is a 1d array being treated as a 2d array.
-  array should be already type-hinted,
-  and width already coorced to int."
-  [array x y width]
-  `(aget ~array (+ (int ~x) (* (int ~y) ~width))))
-
-(defmacro aset2
-  "For faster array setting.
-  array is a 1d array being treated as a 2d array.
-  array should be already type-hinted,
-  and width already coorced to int."
-  [array x y width value]
-  `(aset ~array (+ (int ~x) (* (int ~y) ~width)) ~value))
-
-(defn assoc-conj
-  "Add to a collection in a map."
-  [m k v default]
-  (assoc m k (conj (m k default) v)))
-
 (defn sign
   "Returns 1 if x is positive, -1 if x is negative, else 0"
   [x]
@@ -87,25 +61,18 @@
        (>=? y (first more)))
      false)))
 
+; Christophe Grand
+;http://groups.google.com.au/group/clojure/browse_thread/thread/9f77163a9f29fe79
 (defmacro while-let
-  "while with a binding"
-  [[v cnd] & body]
-  `(loop[]
-     (let [~v ~cnd]
-       (when ~v
-         ~@body
-         (recur)))))
+  "Makes it easy to continue processing an expression as long as it is true"
+  [binding & forms]
+   `(loop []
+      (when-let ~binding
+        ~@forms
+        (recur))))
 
-(defmacro while-let-pred
-  "while with a binding and predicate"
-  [[v cnd] pred & body]
-  `(loop[]
-     (let [~v ~cnd]
-       (when (~pred ~v)
-         ~@body
-         (recur)))))
-
-; Chas Emerick     	
+; Chas Emerick
+;http://groups.google.com.au/group/clojure/browse_thread/thread/a4e1dac88ab8becb
 (defmacro let-map
    "Equivalent of (let [a 5 b (+ a 5)] {:a a :b b})."
    [kvs]
@@ -158,6 +125,7 @@
                   ~(vec (vals args)))
      f#))
 
+; deprecated - core now provides these
 (def *debug* false)
 (defmacro check-preconditions
   "Ensure preconditions are met."
@@ -199,6 +167,9 @@
              (if (first groups)
                groups
                nil))))))
+; ((re-fn "2.") "12324251")
+; = ("23" "24" "25")"
+
 
 (defmacro amap-in-place
   [a idx ret expr]
@@ -209,7 +180,11 @@
          (recur (unchecked-inc ~idx))))
      a#))
 
+; Meikel Brandmeyer
+;http://groups.google.com.au/group/clojure/browse_thread/thread/373846d81d528a9e
 (defn extend-tuple
+  "Lazily creates tuples from given colls, filling the ones that are
+  empty before the rest with the default value."
   [default & lists]
   (lazy-seq
     (let [seqs (map seq lists)]
@@ -217,8 +192,17 @@
         (cons (map (fnil first [default]) seqs)
               (apply extend-tupel default (map rest seqs)))))))
 
+; Nicholas Buduroi
+;http://groups.google.com.au/group/clojure/browse_thread/thread/373846d81d528a9e
+(defn map-pad
+  "Like map but if the collections aren't the same size, the smaller ones
+  are padded with the given default value."
+  [f default & colls]
+  (map #(apply f %) (apply extend-tuple default colls)))
+
 ; Rich Hickey
-(defn fnil
+;http://groups.google.com.au/group/clojure/browse_thread/thread/99cc4a6bfe665a6e
+#_(defn fnil
   "Takes a function f, and returns a function that calls f, replacing
   a nil first argument to f with the supplied value x. Higher arity
   versions can replace arguments in the second and third
@@ -241,11 +225,94 @@
        ([a b c] (f (if (nil? a) x a) (if (nil? b) y b) (if (nil? c) z c)))
        ([a b c & ds] (apply f (if (nil? a) x a) (if (nil? b) y b) (if (nil? c) z c) ds)))))
 
+; I prefer the function to come last
+(defn fnil 
+  "Creates a new function that if passed nil as an argument,
+  operates with supplied arguments instead. The function must be
+  passed as the last argument."
+  [& more]
+  (fn [& args]
+    (let [f (last more)
+          defaults (butlast more)]
+      (apply f (map ; if arg is nil use default
+                    #(if (nil? %1) %2 %1)
+                    args
+                    ; preserve arguments that have no default
+                    (concat defaults (drop (count defaults) args)))))))
+
 (defn conj-in
-  "Returns the resultant map
-  of appending an item to a vector in map m with key k"
-  [m k item]
-  (update-in m ks (fnil conj []) item))
-;(conj-in {} [:a] 1)
-;-> {:a [1]}
+  "Returns the resultant map of appending an item to a vector in map m
+  identified by keys ks which is a vector of keys for nested maps,
+  similar to update-in. If there is no existing vector, one is created."
+  [m ks item]
+  (update-in m ks (fnil [] conj) item))
+; (conj-in {} [:a] 1)
+; = {:a [1]}
+
+(defmacro ifnn
+  "If not nil."
+  [value then else]
+  `(if (not (nil? ~value)) ~then ~else))
+
+(defmacro aget2
+  "For faster lookup.
+  array is a 1d array being treated as a 2d array.
+  array should be already type-hinted,
+  and width already coorced to int."
+  [array x y width]
+  `(aget ~array (+ (int ~x) (* (int ~y) ~width))))
+
+(defmacro aset2
+  "For faster array setting.
+  array is a 1d array being treated as a 2d array.
+  array should be already type-hinted,
+  and width already coorced to int."
+  [array x y width value]
+  `(aset ~array (+ (int ~x) (* (int ~y) ~width)) ~value))
+
+(defn subseq2
+  [coll start end]
+  (take (- end start) (drop start coll)))
+; (subseq2 [0 1 2 3 4] 1 3)
+; = (1 2)
+
+; Constantine Vetoshev
+;http://groups.google.com.au/group/clojure/browse_thread/thread/d6b5fa21073541c1
+(defmacro let-kw
+  "Adds flexible keyword handling to any form which has a parameter
+   list: fn, defn, defmethod, letfn, and others. Keywords may be
+   passed to the surrounding form as & rest arguments, lists, or
+   maps. Lists or maps must be used for functions with multiple
+   arities if more than one arity has keyword parameters. Keywords are
+   bound inside let-kw as symbols, with default values either
+   specified in the keyword spec or nil. Keyword specs may consist of
+   just the bare keyword symbol, which defaults to nil, or may have
+   the general form [keyword-name keyword-default-value*
+   keyword-supplied?*].  keyword-supplied?  is an optional symbol
+   bound to true if the keyword was supplied, and to false otherwise."
+  [kw-spec-raw kw-args & body]
+  (let [kw-spec  (map #(if (sequential? %) % [%]) kw-spec-raw)
+        symbols  (map first kw-spec)
+        keywords (map (comp keyword name) symbols)
+        defaults (map second kw-spec)
+        destrmap {:keys (vec symbols) :or (zipmap symbols defaults)}
+        supplied (reduce
+                  (fn [m [k v]] (assoc m k v)) (sorted-map)
+                  (remove (fn [[_ val]] (nil? val))
+                          (partition 2 (interleave
+                                        keywords
+                                        (map (comp second rest)
+                                             kw-spec)))))
+        kw-args-map (gensym)]
+    `(let [kw-args# ~kw-args
+           ~kw-args-map (if (map? kw-args#)
+                            kw-args#
+                            (apply hash-map kw-args#))
+           ~destrmap ~kw-args-map]
+       ~@(if (empty? supplied)
+             body
+             `((apply (fn [~@(vals supplied)]
+                        ~@body)
+                      (map (fn [x#] (contains? ~kw-args-map x#))
+                           [~@(keys supplied)])))))))
 

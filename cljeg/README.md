@@ -1,6 +1,44 @@
-CLJEG is intended to provide examples for [Clojure](http://clojure.org).
-It contains a simple web application to allow people to submit examples,
-and some utilities to make use of the data.
+CLJEG is intended to provide examples for [Clojure](http://clojure.org),
+and a framework for user examples.
+
+CLJEG contains
+* Macros and functions for creating and using examples
+* Reference examples from the wikibook
+* A simple web application to allow people to submit examples
+
+
+Goals
+-----
+
+* Define examples in one place once.
+* Automatically part of test suite.
+* Automatically included in documentation.
+* Define examples in the code.
+
+* Extension of clojure.test to identify examles for docs and save as meta data.
+* Need to keep the original form intact for documentation purposes.
+
+
+TODO
+----
+
+* Docstring at front might work better? Note currently accepts pred,
+  or pred and value which does not work with optional at end as per deftest.
+* Integrate with autodoc to include example(s) as part of output.
+* Some forms does not seem to work.
+* Copied all from wiki, needs some improvement still.
+* New features examples todo.
+* Coverage tests to check what is missing.
+
+
+Building
+--------
+
+To build the sources
+	mvn clojure:compile
+
+To run the tests
+	mvn clojure:test
 
 To run the web application, you need
 [Compojure](http://github.com/weavjester/compojure)

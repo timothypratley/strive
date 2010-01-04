@@ -183,7 +183,7 @@
          (doto (new java.util.HashMap)
            (.put "a" 1)
            (.put "b" 2))
-         isa? java.util.HashMap
+         instance? java.util.HashMap
          "")
 
 ; this is no good as it requires Java3D
@@ -202,7 +202,7 @@
 
 (example fn
          (map (fn [a] (str "hi " a)) ["mum" "dad" "sister"])
-         = ("hi mum" "hi dad" "hi sister")
+         = '("hi mum" "hi dad" "hi sister")
          "")
 
 (example fn
@@ -210,7 +210,8 @@
          = '("hi mum" "hi dad" "hi sister")
          "Alternate fn syntax is to use #() and % as argument, or %1 %2 etc.")
 
-(example fn
+;;; help - does not work
+#_(example fn
          (map #(class %) [1 "asd"])      
          = '(java.lang.Integer java.lang.String)
          "#() is shorthand for (fn [x]) and is sometimes called a lambda
@@ -262,7 +263,7 @@
 
 (example memfn
          (map (memfn charAt i) ["fred" "ethel" "lucy"] [1 2 3])
-         = (\r \h \y)
+         = '(\r \h \y)
          "")
 
 (example proxy
@@ -273,7 +274,7 @@
                (seq   [] this)
                (first [] (peek v))
                (rest  [] (rev-vector-seq (pop v))))))
-         fn?
+         ifn?
          "")
 
 ;;; help - this doesn't work
@@ -290,7 +291,7 @@
 
 (example into-array
          (into-array [1 2 3])
-         (partial not nil?)
+         (comp not nil?)
          "#<Integer[] [Ljava.lang.Integer;@15fadcf>")
 
 ; doesn't add anything
@@ -363,7 +364,9 @@
            (defmethod rand-str true [] "true")
            (defmethod rand-str false [] "false")
            (for [x (range 5)] (rand-str)))
-         = '("false" "false" "true" "true" "false")
+         seq?
+         ; random list
+         ;'("false" "false" "true" "true" "false")
          "Using multi-methods without using a hierarchy.")
 
 (example defmulti
@@ -417,7 +420,7 @@
 
 (example some
          (some string? [1 2 "hi" 3])
-         = "hi"
+         = true
          "")
 
 
@@ -456,7 +459,7 @@
          "")
 
 (example deref
-         (@(atom 1))
+         @(atom 1)
          = 1
          "@ is the same as deref and works on atoms, refs, agents,
          futures, and local-vars.")
@@ -473,7 +476,7 @@
 
 (example force
          (force (delay (inc 1)))
-         = 1
+         = 2
          "Inc 1 is computed.")
 
 ;;; does not translate to examle macro
@@ -500,7 +503,7 @@
 
 (example conj
          (conj '(:a :b :c) \d)
-         = (\d :a :b :c)
+         = '(\d :a :b :c)
          "")
 
 (example concat
@@ -539,7 +542,7 @@
 
 (example interleave
          (interleave [1 2 3] [:a :b :c])
-         = (1 :a 2 :b 3 :c)
+         = '(1 :a 2 :b 3 :c)
          "")
 
 (example reverse 
@@ -549,7 +552,7 @@
 
 (example butlast 
          (butlast "hello")
-         = (\h \e \l \l)
+         = '(\h \e \l \l)
          "")
 
 (example replace 

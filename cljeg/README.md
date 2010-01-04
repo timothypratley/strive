@@ -2,6 +2,7 @@ CLJEG is intended to provide examples for [Clojure](http://clojure.org),
 and a framework for user examples.
 
 CLJEG contains
+
 * Macros and functions for creating and using examples
 * Reference examples from the wikibook
 * A simple web application to allow people to submit examples
@@ -14,7 +15,6 @@ Goals
 * Automatically part of test suite.
 * Automatically included in documentation.
 * Define examples in the code.
-
 * Extension of clojure.test to identify examles for docs and save as meta data.
 * Need to keep the original form intact for documentation purposes.
 

@@ -15,7 +15,7 @@ Goals
 * Automatically part of test suite.
 * Automatically included in documentation.
 * Define examples in the code.
-* Extension of clojure.test to identify examles for docs and save as meta data.
+* Extension of clojure.test to identify examples for docs and save as meta data.
 * Need to keep the original form intact for documentation purposes.
 
 
@@ -25,9 +25,9 @@ TODO
 * Docstring at front might work better? Note currently accepts pred,
   or pred and value which does not work with optional at end as per deftest.
 * Integrate with autodoc to include example(s) as part of output.
-* Some forms does not seem to work.
+* Some forms do not seem to work.
 * Copied all from wiki, needs some improvement still.
-* New features examples todo.
+* New features (protocols) examples todo.
 * Coverage tests to check what is missing.
 
 

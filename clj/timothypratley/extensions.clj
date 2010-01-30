@@ -316,3 +316,104 @@
                       (map (fn [x#] (contains? ~kw-args-map x#))
                            [~@(keys supplied)])))))))
 
+; Stuart Halloway
+;http://github.com/stuarthalloway/circumspec/blob/master/src/circumspec/utils.clj
+(defmacro wtf
+  "'What the form' is going on? Convenience for macroexpand."
+  [form]
+  `(pprint (macroexpand-1 '~form)))
+
+; Arthur Ulfeldt
+;http://stackoverflow.com/questions/2022911/idiomatic-clojure-for-progress-reporting
+(defn seq-counter 
+  "Calls callback after every nth entry in sequence is evaluated. 
+  Optionally takes another callback to call once the seq is fully evaluated."
+  ([coll finished-callback]
+   (drop-last (lazy-cat coll
+                        [(finished-callback)])))
+  ([coll n callback]
+     (map (fn [index value]
+            (when (= (rem index n) 0)
+              (callback index))
+            value)
+          (iterate inc 1) coll))
+  ([coll n callback finished-callback]
+     (drop-last (concat (seq-counter coll n callback) 
+                  (lazy-seq [(finished-callback)])))))
+
+; NB: the output is a bit strange...
+;(seq-counter [1 2 3 4 5] #(println "DONE"))
+;(seq-counter [1 2 3 4 5] 2 #(println \# %))
+;(seq-counter [1 2 3 4 5] 2 #(println \# %) #(println "DONE"))
+;(map (fn [x] (Thread/sleep 1000) x) (seq-counter [1 2 3 4 5] 2 #(println \# %) #(println "DONE")))
+;(map (fn [x] (Thread/sleep 1000) (.flush System/out) x) [1 2 3 4 5])
+
+; Sean Devlin
+;http://groups.google.com/group/clojure/browse_thread/thread/ed567fa0b9db548c
+(defn every-pred?
+   "Mimics AND"
+   [& preds]
+   (fn [& args] (every? #(apply % args) preds)))
+
+; Sean Devlin
+;http://groups.google.com/group/clojure/browse_thread/thread/ed567fa0b9db548c
+(defn any-pred?
+   "Mimics OR"
+   [& preds]
+   (fn [& args] (some #(apply % args) preds)))
+
+; Sean Devlin
+;http://groups.google.com/group/clojure-dev/browse_thread/thread/51982e4091e3614d
+(defn fkey
+  "Returns a function that applies f to the key of a mapentry"
+  [f] (fn [[k v]] [(f k) v]))
+
+; Sean Devlin
+;http://groups.google.com/group/clojure-dev/browse_thread/thread/51982e4091e3614d
+(defn fval
+  "Returns a function that applies f to the val of a mapentry"
+  [f] (fn [[k v]] [k (f v)]))
+
+; Sean Devlin: same, see http://groups.google.com/group/clojure-dev/browse_thread/thread/51982e4091e3614d
+
+(let [limit (.availableProcessors (Runtime/getRuntime))
+      sem (java.util.concurrent.Semaphore. limit)]
+  (defn submit-future-call
+    "Takes a function of no args and yields a future object that will
+    invoke the function in another thread, and will cache the result and
+    return it on all subsequent calls to deref/@. If the computation has
+    not yet finished, calls to deref/@ will block. 
+    If n futures have already been submitted, then submit-future blocks
+    until the completion of another future, where n is the number of
+    available processors."  
+    [#^Callable task]
+    ; take a slot (or block until a slot is free)
+    (.acquire sem)
+    (try
+      ; create a future that will free a slot on completion
+      (future (try (task) (finally (.release sem))))
+      (catch java.util.concurrent.RejectedExecutionException e
+        ; no task was actually submitted
+        (.release sem)
+        (throw e)))))
+
+(defmacro submit-future
+  "Takes a body of expressions and yields a future object that will
+  invoke the body in another thread, and will cache the result and
+  return it on all subsequent calls to deref/@. If the computation has
+  not yet finished, calls to deref/@ will block.
+  If n futures have already been submitted, then submit-future blocks
+  until the completion of another future, where n is the number of
+  available processors."  
+  [& body] `(submit-future-call (fn [] ~@body)))
+#_(example
+    user=> (submit-future (reduce + (range 100000000)))
+    #<core$future_call$reify__5782@6c69d02b: :pending>
+    user=> (submit-future (reduce + (range 100000000)))
+    #<core$future_call$reify__5782@38827968: :pending>
+    user=> (submit-future (reduce + (range 100000000)))
+    ;; blocks at this point for a 2 processor PC until the previous
+    ;; two futures complete
+    #<core$future_call$reify__5782@214c4ac9: :pending>)
+
+

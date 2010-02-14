@@ -24,6 +24,9 @@
   []
   `(-> (Throwable.) .getStackTrace first .getClassName unmangle))
 
+;; note line and filename
+;; (println "file:" *file* "  line:" @(clojure.lang.Compiler/LINE))
+
 (let [logger (Logger/getLogger "timothypratley.extensions.log")
       a (agent nil)
       m {:off Level/OFF

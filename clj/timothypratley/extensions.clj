@@ -416,4 +416,47 @@
     ;; two futures complete
     #<core$future_call$reify__5782@214c4ac9: :pending>)
 
+; Mark Triggs
+;http://dishevelled.net/Generating-Clojure-import-lines-using-SLIME.html
+(defn find-classes [regex]
+  (let [search-path-properities ["java.class.path" "sun.boot.class.path"]]
+    (for [search-path search-path-properities
+          jar (filter #(.endsWith % ".jar")
+                      (.split (System/getProperty search-path)
+                              (System/getProperty "path.separator")))
+          entry (try (filter #(.endsWith (.getName %) ".class")
+                             (enumeration-seq
+                               (.entries (new java.util.jar.JarFile jar))))
+                     (catch Exception _))
+          name [(.. entry getName (replaceAll "\\.class$" ""))]
+          :when (re-find regex name)]
+      name)))
 
+; Rich Hickey
+;http://paste.lisp.org/display/67182
+(defn jcall [obj name & args]
+  (clojure.lang.Reflector/invokeInstanceMethod obj (str name)
+    (if args (to-array args) clojure.lang.RT/EMPTY_ARRAY)))
+(defn jfn [name]
+  #(apply jcall %1 name %&))
+#_(example ((jfn 'substring) "fred" 2 3))
+#_(example ((jfn 'toUpperCase) "fred"))
+;joubert
+(defmacro getFnFromMethodName
+  "Given a 'methodName', returns a function that invokes that method."
+  [methodName] `(fn [target# val#]
+		  (. target# ~(symbol methodName) val#)))
+
+(defmacro with-timeout
+  "Attempt to get the result of body within ms milliseconds."
+  [ms & body]
+  `(let [f# (future ~@body)]
+     (.get f# ~ms java.util.concurrent.TimeUnit/MILLISECONDS)))
+#_(example user=> (with-timeout 1 (reduce * (range 1 100001)))
+           java.util.concurrent.TimeoutException (NO_SOURCE_FILE:0))
+#_(example user=> (with-timeout 1 (reduce * (range 1 11)))
+           3628800)
+
+(defmacro japply
+  [& args]
+  (concat (butlast args) (last args)))

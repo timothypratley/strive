@@ -7,6 +7,7 @@
               OutputStreamWriter OutputStream)))
 
 ; Stephen C. Gilardi   	
+;http://www.mail-archive.com/clojure@googlegroups.com/msg13018.html
 (defn unmangle
   "Given the name of a class that implements a Clojure function,  
   returns the function's name in Clojure.
@@ -19,6 +20,7 @@
     \_ \-))
 
 ; Stephen C. Gilardi   	
+;http://www.mail-archive.com/clojure@googlegroups.com/msg13018.html
 (defmacro current-function-name
   "Returns a string, the name of the current Clojure function."
   []
